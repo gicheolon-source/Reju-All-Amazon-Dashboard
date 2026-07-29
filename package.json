@@ -1,0 +1,9 @@
+{
+  "name": "rejuall-weekly-lite",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "google-auth-library": "^9.14.0"
+  }
+}
