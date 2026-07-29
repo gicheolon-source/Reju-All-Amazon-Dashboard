@@ -114,6 +114,10 @@
 
   /* ── KPI / cards / tables (공통) ────── */
   .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin-bottom:20px}
+  /* 카드 7개(광고 성과)는 auto-fit 으로 — 폭이 좁아지면 알아서 줄바꿈 */
+  .kpis.kmany{grid-template-columns:repeat(auto-fit,minmax(146px,1fr))}
+  .kpis.kmany .kpi{padding:16px 14px 14px}
+  .kpis.kmany .kpi .value{font-size:1.42rem}
   .kpi{
     background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px 14px;
@@ -370,7 +374,7 @@
 
   <!-- ── PAGE: ADVERTISING ── -->
   <section class="page" id="page-ads">
-    <div class="kpis" id="adKpis"></div>
+    <div class="kpis kmany" id="adKpis"></div>
     <div class="grid">
       <div class="card">
         <h2>주간 Spend vs Ad Sales 추이</h2>
@@ -589,6 +593,13 @@ const campProductOf = name => {
 };
 
 const fmt$ = n => '$' + Math.round(n).toLocaleString();
+/* 노출수처럼 큰 정수는 축약 (1,234,567 → 1.23M) — 카드 폭 안에서 안 잘리게 */
+const fmtN = n => {
+  n = Math.round(n || 0);
+  if(n >= 1e6) return (n/1e6).toFixed(2).replace(/\.?0+$/,'') + 'M';
+  if(n >= 1e4) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'K';
+  return n.toLocaleString();
+};
 const acosOf = w => w.sales ? w.spend / w.sales * 100 : 0;
 const tacosOf = w => w.totalSales ? w.spend / w.totalSales * 100 : 0;
 const roasOf = w => w.spend ? w.sales / w.spend : 0;
@@ -603,8 +614,9 @@ function adSourceFor(w){
     return {label:`${w.label} 주간`, isMonthly:false, ...w.ads};
   const m = AD_PERIODS[AD_PERIODS.length-1];
   if(m) return {label:m.label, isMonthly:true, spend:m.spend, sales:m.sales,
-                campaigns:m.campaigns};
-  return {label:'—', isMonthly:false, empty:true, spend:0, sales:0, campaigns:[]};
+                impr:m.impr, clicks:m.clicks, campaigns:m.campaigns};
+  return {label:'—', isMonthly:false, empty:true, spend:0, sales:0,
+          impr:0, clicks:0, campaigns:[]};
 }
 
 /* KPI 카드 공용 렌더러
@@ -612,13 +624,19 @@ function adSourceFor(w){
 function kpiHtml(specs){
   return specs.map(k=>{
     const fmt = k.fmt || fmt$;
+    /* cur 이 null = 해당 주차 리포트가 없어 계산 불가 → '—' 로 표시하고 증감 생략 */
+    if(k.cur == null) return `<div class="kpi${k.hl?' hl':''}">
+      <div class="label">${k.label}</div>
+      <div class="value num" style="color:var(--ink-soft)">—</div>
+      <div class="sub"><span class="delta flat">${k.na || '데이터 없음'}</span></div>
+    </div>`;
     let deltaHtml = '<span class="delta flat">기준 주차</span>';
     let vsHtml = '';
     if(k.prev != null){
       const d = k.cur - k.prev;
       let txt;
       if(k.unit==='pct') txt = (d>=0?'+':'') + (k.prev ? (d/k.prev*100).toFixed(1) : '0.0')+'%';
-      else if(k.unit==='pp') txt = (d>=0?'+':'−') + Math.abs(d).toFixed(1)+'%p';
+      else if(k.unit==='pp') txt = (d>=0?'+':'−') + Math.abs(d).toFixed(k.dp ?? 1)+'%p';
       else txt = (d>=0?'+':'−') + Math.abs(d).toFixed(2);
       const good = k.invert ? d<0 : d>0;
       const cls = Math.abs(d)<0.001 ? 'flat' : (good?'pos':'neg');
@@ -927,9 +945,23 @@ function renderAds(){
       ? `⚠ ${w.label} 주간 광고 리포트 미업로드 — 최근 <b>${src.label}</b> 스냅샷 표시`
       : `출처: ${src.label} 광고 리포트`;
 
+  /* Impressions·Clicks 는 Campaign 리포트에만 있는 지표다 (Spend/Sales 는 ASIN 탭 출처).
+     해당 주차 캠페인 리포트가 없으면 월간 스냅샷으로 대체하지 않고 '—' 로 둔다 —
+     주간 Spend 옆에 월간 노출수를 붙이면 4배 부풀어 보이기 때문. */
+  const cAds = (w.ads && w.ads.hasAds) ? w.ads : null;
+  const pAds = (p && p.ads && p.ads.hasAds) ? p.ads : null;
+  const both = cAds && pAds;
+
   document.getElementById('adKpis').innerHTML = kpiHtml([
     {label:'Ad Spend', cur:w.spend, prev:p?.spend, unit:'pct'},
     {label:'Ad Sales', cur:w.sales, prev:p?.sales, unit:'pct'},
+    {label:'Impressions', cur:cAds?cAds.impr:null, prev:both?pAds.impr:null,
+     fmt:fmtN, unit:'pct', na:'광고 리포트 미업로드'},
+    {label:'Clicks', cur:cAds?cAds.clicks:null, prev:both?pAds.clicks:null,
+     fmt:fmtN, unit:'pct', na:'광고 리포트 미업로드'},
+    {label:'CTR', cur:cAds&&cAds.impr?cAds.clicks/cAds.impr*100:null,
+     prev:both&&pAds.impr?pAds.clicks/pAds.impr*100:null,
+     fmt:v=>v.toFixed(2)+'%', unit:'pp', dp:2, na:'광고 리포트 미업로드'},
     {label:'ACOS', cur:acosOf(w), prev:p?acosOf(p):null,
      fmt:v=>v.toFixed(1)+'%', invert:true, unit:'pp', hl:true},
     {label:'TACOS', cur:tacosOf(w), prev:p?tacosOf(p):null,

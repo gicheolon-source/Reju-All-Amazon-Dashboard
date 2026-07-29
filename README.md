@@ -25,7 +25,7 @@
 | gid | 리포트 | 용도 | 필수 컬럼 |
 |---|---|---|---|
 | `952475532` (`GID_ASIN`) | **Sales & Traffic by ASIN (일별)** | 매출·유닛·세션·제품별·TACOS 분모 | `Date`, `(Child) ASIN`, `Product Name`, `Units Ordered`, `Ordered Product Sales`, `Spend`, `Ad Sales`, `Sessions - Total` |
-| `1710166971` (`GID_CAMPAIGN`) | **Campaign 리포트 (SP/SB/SD)** | 캠페인 성과 상세·타입별 믹스 | `Date range`, `Campaign name`, `Ad product`, `Portfolio name`, `Total cost`, `Sales`, `Clicks`, `Purchases` |
+| `1710166971` (`GID_CAMPAIGN`) | **Campaign 리포트 (SP/SB/SD)** | 캠페인 성과 상세·타입별 믹스·노출/클릭 | `Date range`, `Campaign name`, `Ad product`, `Portfolio name`, `Total cost`, `Sales`, `Impressions`, `Clicks`, `Purchases` |
 
 ### 시트 B `SHEET_NOTES_ID` = `1GOClg8wNjUOJAQzcu2dGbENoMWrMCMd4vzx-LLqkFqA`
 
@@ -37,6 +37,20 @@
 - 컬럼은 **위치가 아니라 헤더 이름**으로 찾습니다 → 열 순서가 바뀌어도 안전. 단 **헤더 문자열은 바꾸지 마세요.**
 - 매출·KPI는 전부 ASIN 탭에서 나옵니다 → Campaign 리포트가 없는 주차도 KPI는 정상 표시되고,
   캠페인 표만 `⚠ 주간 광고 리포트 미업로드` 로 비워집니다.
+
+### 지표별 출처 (중요)
+
+| 지표 | 출처 | Campaign 리포트 없는 주차 |
+|---|---|---|
+| Total Sales · Units · Sessions · **Ad Spend** · **Ad Sales** · ACOS · TACOS · ROAS | **ASIN 탭** | 정상 표시 |
+| **Impressions** · **Clicks** · **CTR** · 캠페인 표 | **Campaign 탭** | `—` + `광고 리포트 미업로드` |
+
+> Impressions/Clicks 는 월간 스냅샷으로 **폴백하지 않습니다.** 주간 Spend 옆에 월간 노출수를
+> 붙이면 4배 부풀어 보여 오독을 유발하기 때문입니다. 캠페인 표만 월간 폴백을 씁니다.
+>
+> ⚠ ASIN 탭의 `Spend` 와 Campaign 탭의 `Total cost` 합계는 일치하지 않습니다
+> (예: W29 → $33,592 vs $42,152). 리포트 집계 기준이 달라서 정상이며,
+> KPI 카드의 Ad Spend 는 **ASIN 탭 기준**입니다. CTR 은 Campaign 탭 내부 값만 써서 자체 정합합니다.
 - NOTES는 실패해도 대시보드를 깨뜨리지 않습니다 (시트 미공유·헤더 변경 → 코멘트만 빈 상태).
 
 ### 주간/월간 자동 라우팅 (Campaign 리포트)

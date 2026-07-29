@@ -226,8 +226,8 @@ export function buildDashboard({ asin, camp, notes }) {
      (Search term / Targeting 은 추천 패널 전용이었으므로 제거) */
   const adWeeks = {}, adMonths = {};
   const bucket = (kind, key) => kind === 'week'
-    ? (adWeeks[key] ||= { spend: 0, sales: 0, campaigns: [], range: '' })
-    : (adMonths[key] ||= { spend: 0, sales: 0, campaigns: [], range: '' });
+    ? (adWeeks[key] ||= { spend: 0, sales: 0, impr: 0, clicks: 0, campaigns: [], range: '' })
+    : (adMonths[key] ||= { spend: 0, sales: 0, impr: 0, clicks: 0, campaigns: [], range: '' });
 
   const classify = rows => {
     const h = rows && rows[0] || [];
@@ -240,6 +240,7 @@ export function buildDashboard({ asin, camp, notes }) {
       dr: idxOf(h, 'Date range'), name: idxOf(h, 'Campaign name'),
       prod: idxOf(h, 'Ad product'), cost: idxOf(h, 'Total cost'),
       sales: idxOf(h, 'Sales'), clicks: idxOf(h, 'Clicks'), pur: idxOf(h, 'Purchases'),
+      impr: idxOf(h, 'Impressions'),    // 노출수 (Viewable impressions 아님)
       pf: idxOf(h, 'Portfolio name'),   // 있으면 포트폴리오, 없으면 미지정
     };
     for (const x of rows.slice(1)) {
@@ -247,11 +248,13 @@ export function buildDashboard({ asin, camp, notes }) {
       const [kind, key] = routeRange(x[ci.dr]); if (!kind) continue;
       const t = bucket(kind, key);
       const spend = money(x[ci.cost]), sales = money(x[ci.sales]), clk = money(x[ci.clicks]);
-      t.spend += spend; t.sales += sales;
+      const imp = ci.impr >= 0 ? money(x[ci.impr]) : 0;
+      t.spend += spend; t.sales += sales; t.impr += imp; t.clicks += clk;
       t.campaigns.push({
         name: str(x[ci.name]), type: AD_TYPE[str(x[ci.prod])] || 'SP',
         portfolio: (ci.pf >= 0 && str(x[ci.pf])) ? str(x[ci.pf]) : '미지정',
-        spend, sales, cvr: clk ? +(money(x[ci.pur]) / clk * 100).toFixed(1) : 0,
+        spend, sales, impr: imp, clicks: clk,
+        cvr: clk ? +(money(x[ci.pur]) / clk * 100).toFixed(1) : 0,
       });
       if (kind === 'month') t.range = str(x[ci.dr]);
     }
@@ -289,6 +292,8 @@ export function buildDashboard({ asin, camp, notes }) {
         hasAds: has,
         spend: has ? Math.round(aw.spend) : 0,
         sales: has ? Math.round(aw.sales) : 0,
+        impr: has ? Math.round(aw.impr) : 0,
+        clicks: has ? Math.round(aw.clicks) : 0,
         campaigns: has ? [...aw.campaigns].sort((a, b) => b.spend - a.spend) : [],
       },
     };
@@ -299,6 +304,7 @@ export function buildDashboard({ asin, camp, notes }) {
     return {
       key, label: `${key} (\uc6d4\uac04)`, range: m.range,
       spend: Math.round(m.spend), sales: Math.round(m.sales),
+      impr: Math.round(m.impr), clicks: Math.round(m.clicks),
       campaigns: [...m.campaigns].sort((a, b) => b.spend - a.spend),
     };
   });
