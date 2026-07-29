@@ -47,10 +47,11 @@ export default async function handler(req, res) {
     const token = (await client.getAccessToken()).token;
     const H = { Authorization: `Bearer ${token}` };
 
+    const titleCache = {};   // 요청 단위 — 탭 이름 변경이 즉시 반영되도록
     const [asin, camp, notes] = await Promise.all([
-      readTab(CFG.mainId, CFG.gidAsin, H),
-      readTab(CFG.mainId, CFG.gidCampaign, H),
-      readNotes(H),   // 코멘트 시트 접근 불가여도 [] 반환 → 대시보드는 정상 동작
+      readTab(CFG.mainId, CFG.gidAsin, H, titleCache),
+      readTab(CFG.mainId, CFG.gidCampaign, H, titleCache),
+      readNotes(H, titleCache),   // 코멘트 시트 접근 불가여도 [] 반환 → 대시보드는 정상 동작
     ]);
 
     const out = buildDashboard({ asin, camp, notes });
@@ -60,25 +61,38 @@ export default async function handler(req, res) {
   }
 }
 
-/* ── gid → 탭 제목 해석 후 값 읽기 ───────────────────────────── */
-const titleCache = {};
-async function gidToTitle(sheetId, gid, H) {
-  if (!titleCache[sheetId]) {
+/* ── gid → 탭 제목 해석 후 값 읽기 ─────────────────────────────
+   A1 표기법에서 탭 이름은 작은따옴표로 감싼다. 공백·하이픈이 있거나
+   숫자로 시작하는 이름("6-1 캠페인" 등)은 감싸지 않으면
+   `Unable to parse range` 400 이 나서 대시보드 전체가 죽는다.
+   이름 안의 ' 는 '' 로 이스케이프한다 (Sheets 규칙). */
+const qTitle = t => `'${String(t).replace(/'/g, "''")}'`;
+
+/* 탭 제목 캐시는 요청 단위로 만든다. 모듈 전역에 두면 Vercel 의 warm 컨테이너가
+   재사용돼서, 시트에서 탭 이름을 바꾼 뒤에도 옛 이름을 계속 써 400 이 난다.
+   (컨테이너마다 상태가 달라 "어떤 요청은 되고 어떤 요청은 안 되는" 증상) */
+async function gidToTitle(sheetId, gid, H, cache) {
+  /* 값(map)이 아니라 Promise 를 캐시한다 — Promise.all 로 같은 시트의 탭 2개를
+     동시에 읽을 때 메타데이터 요청이 중복되지 않도록. */
+  if (!cache[sheetId]) cache[sheetId] = (async () => {
     const r = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties(sheetId,title)`,
       { headers: H });
     if (!r.ok) throw new Error(`meta ${sheetId} ${r.status} ${await r.text()}`);
     const j = await r.json();
-    titleCache[sheetId] = Object.fromEntries(
+    return Object.fromEntries(
       (j.sheets || []).map(s => [s.properties.sheetId, s.properties.title]));
-  }
-  const t = titleCache[sheetId][gid];
-  if (!t) throw new Error(`gid ${gid} not found in ${sheetId}`);
+  })();
+  const map = await cache[sheetId];
+  const t = map[gid];
+  if (!t) throw new Error(
+    `gid ${gid} not found in ${sheetId} — 있는 탭: ${Object.entries(map)
+      .map(([g, n]) => `${n}(${g})`).join(', ')}`);
   return t;
 }
-async function readTab(sheetId, gid, H) {
-  const title = await gidToTitle(sheetId, gid, H);
-  const range = encodeURIComponent(`${title}!A1:BZ100000`);
+async function readTab(sheetId, gid, H, cache) {
+  const title = await gidToTitle(sheetId, gid, H, cache);
+  const range = encodeURIComponent(`${qTitle(title)}!A1:BZ100000`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}` +
               `?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`;
   const r = await fetch(url, { headers: H });
@@ -87,10 +101,10 @@ async function readTab(sheetId, gid, H) {
 }
 /* 주간 코멘트 시트 읽기 — 실패해도 절대 대시보드를 깨뜨리지 않는다.
    (시트 미공유/삭제/헤더 변경 등 어떤 이유든 [] 반환 → 코멘트만 비워짐) */
-async function readNotes(H) {
+async function readNotes(H, cache) {
   try {
-    const title = await gidToTitle(CFG.notesId, CFG.gidNotes, H);
-    const range = encodeURIComponent(`${title}!A1:Z2000`);
+    const title = await gidToTitle(CFG.notesId, CFG.gidNotes, H, cache);
+    const range = encodeURIComponent(`${qTitle(title)}!A1:Z2000`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.notesId}/values/${range}` +
                 `?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`;
     const r = await fetch(url, { headers: H });

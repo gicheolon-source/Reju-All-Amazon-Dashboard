@@ -156,9 +156,18 @@ curl -s -o _chartjs.js https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/cha
 python _build.py      # → Dr_Rejuall_Weekly_Lite.html (Chart.js + 데이터 내장)
 ```
 
-- `_pull.mjs` 는 `export?format=csv` 를 씁니다. **`gviz/tq` 를 쓰면 안 됩니다** —
-  컬럼 타입을 추론해서 날짜·숫자 열의 문자열 헤더(`Date`, `Campaign ID` 등)를 빈칸으로 반환하고,
-  그러면 헤더 이름으로 컬럼을 찾는 집계 로직이 전 행을 스킵합니다.
+- `_pull.mjs` 는 **서비스 계정 토큰으로 Sheets API v4** 를 씁니다 (배포판과 동일 경로).
+  시트를 "제한됨"으로 잠근 뒤로는 무인증 `export?format=csv` 가 401 이라 인증이 필수입니다.
+  키 경로는 `REJUALL_SA_KEY` 환경변수로 바꿀 수 있습니다:
+  ```powershell
+  $env:REJUALL_SA_KEY="C:\path\to\key.json"; node _pull.mjs
+  ```
+- **`gviz/tq` 는 절대 쓰지 마세요** — 컬럼 타입을 추론해서 날짜·숫자 열의 문자열 헤더
+  (`Date`, `Campaign ID` 등)를 빈칸으로 반환하고, 그러면 헤더 이름으로 컬럼을 찾는
+  집계 로직이 전 행을 스킵합니다.
+- 탭 이름은 A1 표기법에서 **작은따옴표로 감쌉니다.** 감싸지 않으면 `6-1 캠페인` 처럼
+  숫자로 시작하거나 하이픈이 든 이름에서 `Unable to parse range` 400 이 납니다.
+- **탭 이름을 바꿔도 됩니다** (gid 로 찾으므로). 단 gid 는 바꾸면 안 됩니다.
 - 로컬 프리뷰(`index.html` 직접 열기)는 `/api/data` 실패 시 `data.sample.json` 으로 폴백합니다.
 
 ---
