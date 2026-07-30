@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDRN Skincare · 재고 관제 대시보드 (US/JP)</title>
+<style>
+:root{
+  --paper:#F4F5F1; --card:#FFFFFF; --ink:#17242F; --sub:#5B6B76;
+  --line:#DCE0D8; --line-strong:#B9C0B4;
+  --orange:#DE5A0F; --orange-soft:#FCEADD;
+  --harbor:#0E5E6F; --harbor-soft:#E3EFF1;
+  --red:#C0392B; --red-soft:#F9E4E1;
+  --amber:#A8720A; --amber-soft:#FBF0D9;
+  --green:#2E7D46; --green-soft:#E2F0E6;
+  --mono:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
+  --sans:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit;font-size:13px;color:var(--ink)}
+input[type=number]{font-family:var(--mono)}
+
+/* ---------- header: manifest bar ---------- */
+header{background:var(--ink);color:#EDF0EA;padding:0}
+.man-top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px 20px 10px}
+.man-id{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#8FA0AB;text-transform:uppercase}
+.man-title{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.man-title small{font-weight:400;color:#9FB0BA;font-size:13px;margin-left:8px}
+.man-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{position:relative;font-family:var(--mono);font-size:12px;font-weight:600;background:var(--orange);color:#fff;
+  padding:7px 12px 7px 22px;border-radius:3px;letter-spacing:.04em}
+.tag::before{content:"";position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  width:6px;height:6px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,.55)}
+.tag.mode{background:var(--harbor)}
+.man-actions{display:flex;gap:6px}
+.man-actions button{background:transparent;border:1px solid #45535D;color:#C4CFD6;font-size:12px;
+  padding:6px 10px;border-radius:3px}
+.man-actions button:hover{border-color:#8FA0AB;color:#fff}
+
+/* ---------- nav ---------- */
+nav{display:flex;gap:2px;padding:0 20px;background:var(--ink);overflow-x:auto}
+nav button{background:transparent;border:none;color:#9FB0BA;font-size:13px;font-weight:500;
+  padding:11px 14px;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:#fff;border-bottom-color:var(--orange)}
+nav button:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}
+
+/* ---------- main ---------- */
+main{max-width:1280px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:18px;overflow:hidden}
+.card-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:15px;font-weight:700}
+.card-h .hint{font-size:12px;color:var(--sub)}
+.card-b{padding:0}
+.pad{padding:14px 16px}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--harbor);
+  border-radius:5px;padding:12px 14px}
+.kpi.warn{border-left-color:var(--red)}
+.kpi.act{border-left-color:var(--orange)}
+.kpi .k-lab{font-size:11px;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono)}
+.kpi .k-val{font-family:var(--mono);font-size:22px;font-weight:600;margin-top:2px}
+.kpi .k-sub{font-size:11px;color:var(--sub);margin-top:2px}
+
+/* tables */
+.twrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{background:#EEF0EA;font-size:11.5px;font-weight:600;color:#404E58;padding:8px 10px;
+  border-bottom:1px solid var(--line-strong);border-right:1px solid var(--line);text-align:center;
+  white-space:nowrap;position:sticky;top:0}
+td{padding:7px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  text-align:right;font-family:var(--mono);font-size:13px;white-space:nowrap}
+td.txt{text-align:left;font-family:var(--sans);font-weight:500}
+td.ctr{text-align:center}
+tr:hover td{background:#FAFBF8}
+td input[type=number],td input[type=date],td input[type=text]{
+  width:90px;border:1px solid transparent;background:var(--amber-soft);border-radius:3px;
+  padding:4px 6px;text-align:right}
+td input[type=text]{text-align:left;width:130px;background:var(--amber-soft)}
+td input:focus{outline:2px solid var(--orange);background:#fff}
+td select{border:1px solid var(--line);border-radius:3px;padding:4px;background:#fff}
+.pill{display:inline-block;font-family:var(--sans);font-size:11.5px;font-weight:600;
+  padding:3px 9px;border-radius:99px}
+.p-red{background:var(--red-soft);color:var(--red)}
+.p-amber{background:var(--amber-soft);color:var(--amber)}
+.p-green{background:var(--green-soft);color:var(--green)}
+.p-gray{background:#ECEEE9;color:var(--sub)}
+.num-hot{color:var(--orange);font-weight:600}
+.num-red{color:var(--red);font-weight:600}
+.cell-red{background:var(--red-soft)!important}
+.cell-amber{background:var(--amber-soft)!important}
+.cell-green{background:var(--green-soft)!important}
+.cell-hl{background:var(--orange-soft)!important}
+
+.btn{border:1px solid var(--line-strong);background:#fff;border-radius:4px;font-size:12.5px;
+  font-weight:500;padding:7px 12px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:3px 8px;font-size:11.5px}
+.note{font-size:12px;color:var(--sub);padding:10px 16px;border-top:1px dashed var(--line);line-height:1.55}
+.note b{color:var(--ink)}
+.banner{background:var(--amber-soft);border:1px solid #E4CE96;color:#6B4E0B;border-radius:5px;
+  padding:10px 14px;font-size:13px;margin-bottom:16px}
+.formrow{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:12px 16px;background:#FAFBF8;border-bottom:1px solid var(--line)}
+.formrow label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--sub);font-weight:600}
+.formrow input,.formrow select{border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;background:#fff}
+.seg{display:flex;border:1px solid #45535D;border-radius:4px;overflow:hidden}
+.seg button{background:transparent;border:none;color:#C4CFD6;font-size:12.5px;font-weight:600;padding:7px 12px}
+.seg button.on{background:var(--orange);color:#fff}
+.editbtn{background:transparent;border:1px solid #45535D;color:#C4CFD6;font-size:12px;padding:6px 12px;border-radius:3px;font-weight:600}
+.editbtn.on{background:var(--green);border-color:var(--green);color:#fff}
+.syncline{font-size:11px;color:#8FA0AB;font-family:var(--mono);padding:0 20px 8px}
+footer{max-width:1280px;margin:0 auto;padding:6px 20px 30px;font-size:11.5px;color:var(--sub);font-family:var(--mono)}
+@media(prefers-reduced-motion:no-preference){
+  .view{animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="man-top">
+    <div>
+      <div class="man-id">PDRN SKINCARE / AMZ-US / INVENTORY CONTROL</div>
+      <div class="man-title">재고 관제 대시보드 <small>익월 1일 착지 기준 · FBA + 3PL</small></div>
+    </div>
+    <div class="man-right">
+      <span class="tag mode" id="modeTag">FBA+3PL</span>
+      <span class="tag" id="ddayTag">PBDD D-00</span>
+      <div class="seg" id="countrySeg"></div>
+      <button class="editbtn" id="editBtn" onclick="toggleEdit()">편집</button>
+      <div class="man-actions">
+        <button onclick="exportJSON()">백업 내보내기</button>
+        <button onclick="document.getElementById('impFile').click()">복원</button>
+        <button onclick="resetAll()">초기화</button>
+        <input type="file" id="impFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      </div>
+    </div>
+  </div>
+  <div class="syncline" id="syncLine"></div>
+  <nav id="nav"></nav>
+</header>
+
+<main id="main"></main>
+<footer>데이터는 이 브라우저의 localStorage에만 저장됩니다 · 기기 변경/공유 전 반드시 [백업 내보내기] 사용 · v4 로직: 보충 필요 = 당월 잔여 판매 + 익월 1일 필요 재고 − 현 보유</footer>
+
+<script>
+/* ================= config ================= */
+// ▼▼▼ Supabase 연동 시 아래 두 줄만 채우세요 (비우면 로컬 모드로 작동) ▼▼▼
+const SUPABASE_URL = "";      // 예: "https://xxxx.supabase.co"
+const SUPABASE_ANON_KEY = ""; // Settings > API > anon public key
+// ▲▲▲ 설정 방법은 함께 제공된 hybrid_setup.md 참고 ▲▲▲
+
+// ▼▼▼ 구글 시트 "웹에 게시" CSV 주소 (비우면 해당 탭은 웹에서 직접 입력) ▼▼▼
+const SHEET = {
+  US: {
+    targets: "",  // '월별 목표' 탭 게시 CSV 주소
+    data:    "",  // 'Data 입력' 탭 게시 CSV 주소
+  },
+  JP: {
+    targets: "",
+    data:    "",
+  },
+};
+const sheetMode = () => !!(SHEET[G.country] && SHEET[G.country].targets);
+
+/* ================= state ================= */
+const LS_KEY = 'inv_multi_v1';
+const MONTHS = [
+  {y:2026,m:5},{y:2026,m:6},{y:2026,m:7},{y:2026,m:8},{y:2026,m:9},
+  {y:2026,m:10},{y:2026,m:11},{y:2026,m:12},{y:2027,m:1}
+];
+const mLabel = mo => (mo.m===1?`'${String(mo.y).slice(2)} `:'')+mo.m+'월';
+
+const US_DEFAULT = {
+  settings:{ threePL:2, seaLead:2, airLead:0.5, plToFbaWeeks:2, buffer:0.5, pbdd:'2026-10-06', eventLabel:'PBDD' },
+  coverage:[2,2,2,2,2,1,2,2,2],
+  products:[
+    {name:'PDRN Rejuvenating Cream 0.7 Fl Oz',        sku:'B0FN7L65C1', asin:'B0FN7L65C1', targets:[0,0,9300,12200,12200,22150,33448,24365,0],   s7:2170, fba:24826, pl3:0},
+    {name:'PDRN Copper Peptide Serum 1.01 Fl Oz',     sku:'B0GZSTTBVW', asin:'B0GZSTTBVW', targets:[0,0,7750,13420,13420,24365,28059,31675,0],   s7:2857, fba:6181,  pl3:0},
+    {name:'PDRN Rejuvenating Lip Serum 0.3 Fl Oz',    sku:'B0GL22N4GY', asin:'B0GL22N4GY', targets:[0,0,11160,14640,14640,26580,28942,31896,0],  s7:2969, fba:24631, pl3:0},
+    {name:'LC-Ceramide Barrier Cream 1.69 Fl Oz',     sku:'B0FPDWZ5X2', asin:'B0FPDWZ5X2', targets:[0,0,1860,2440,2440,4430,7652,5316,0],        s7:495,  fba:7613,  pl3:0},
+    {name:'PDRN Rejuvenating Cream Max 2 Fl Oz',      sku:'B0FN7LDTB7', asin:'B0FN7LDTB7', targets:[0,0,465,976,976,1772,6123,2126,0],           s7:117,  fba:8414,  pl3:1144},
+    {name:'Retino-Mela Serum 1 Fl Oz',                sku:'B0FP4WJXD5', asin:'B0FP4WJXD5', targets:[0,0,744,976,976,1772,2790,2126,0],           s7:219,  fba:5179,  pl3:2000},
+    {name:'PDRN Rejuvenating Mask (1.2 Fl Oz x 4EA)', sku:'B0GL26G5G2', asin:'B0GL26G5G2', targets:[0,0,1395,1830,1830,3323,6776,3987,0],        s7:381,  fba:3994,  pl3:0},
+    {name:'PDRN Hair Density Scalp Serum 0.5 Fl Oz',  sku:'B0GZT6FLDF', asin:'B0GZT6FLDF', targets:[0,0,620,1180,1420,2050,1945,2460,0],         s7:120,  fba:3709,  pl3:0},
+    {name:'Skincare System',                          sku:'B0GMWJBZFF', asin:'B0GMWJBZFF', targets:[0,0,0,0,0,0,0,0,0],                          s7:0,    fba:566,   pl3:0},
+  ],
+  pipeline:[
+    {date:'2026-08-07', sku:'B0FN7L65C1', qty:38400, mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0GZSTTBVW', qty:63360, mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0GL22N4GY', qty:54000, mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0FPDWZ5X2', qty:9600,  mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0FP4WJXD5', qty:4000,  mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0GL26G5G2', qty:7680,  mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-07', sku:'B0GZT6FLDF', qty:8820,  mode:'해상', dest:'3PL', eta:'2026-09-15', status:'이동중', memo:'1차 해상 선적'},
+    {date:'2026-08-25', sku:'B0GZSTTBVW', qty:12000, mode:'항공', dest:'FBA', eta:'2026-09-05', status:'이동중', memo:'긴급 항공 보충'},
+  ],
+  updated:''
+};
+const JP_DEFAULT = {
+  settings:{ threePL:0.5, seaLead:0.5, airLead:0.25, plToFbaWeeks:1, buffer:0.5, pbdd:'2026-10-17', eventLabel:'감사제' },
+  coverage:[1,1,1.5,1,1,1.5,1,1.5,1],
+  products:[],
+  pipeline:[],
+  updated:''
+};
+const COUNTRY_META = {
+  US: { label:'🇺🇸 미국', wh:'3PL', title:'AMZ-US' },
+  JP: { label:'🇯🇵 일본', wh:'현지창고', title:'AMZ-JP' },
+};
+
+let G = loadG();
+let S = G.data[G.country];
+const SHARED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+let EDIT_ON = false;
+let EDIT_PW = sessionStorage.getItem('inv_edit_pw') || '';
+let SYNC_MSG = SHARED ? '동기화 중…' : '로컬 모드';
+
+function loadG(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const g = JSON.parse(raw); if(g.data && g.data.US) return g; } }catch(e){}
+  return { country:'US', data:{ US: JSON.parse(JSON.stringify(US_DEFAULT)), JP: JSON.parse(JSON.stringify(JP_DEFAULT)) } };
+}
+function setCountry(c){ G.country=c; S=G.data[c]; localStorage.setItem(LS_KEY, JSON.stringify(G)); render(); sheetLoad(); }
+
+function canEdit(){
+  if(!SHARED) return true;               // 로컬 모드: 내 브라우저 데이터 = 자유 편집
+  return EDIT_ON;                        // 공유 모드: 암호 인증 후에만
+}
+function guard(){
+  if(canEdit()) return true;
+  alert('보기 전용 모드입니다. 우측 상단 [편집]을 눌러 수정 암호를 입력하세요.');
+  render();
+  return false;
+}
+function toggleEdit(){
+  if(!SHARED){ alert('로컬 모드에서는 편집이 항상 열려 있습니다. (Supabase 연동 시 암호 잠금이 활성화됩니다)'); return; }
+  if(EDIT_ON){ EDIT_ON=false; render(); return; }
+  const pw = prompt('수정 암호를 입력하세요:');
+  if(!pw) return;
+  EDIT_PW = pw; sessionStorage.setItem('inv_edit_pw', pw);
+  EDIT_ON = true; SYNC_MSG='편집 모드 (첫 저장 시 암호 검증)';
+  render();
+}
+
+/* ---------- Google Sheet CSV loader ---------- */
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ row.push(cell); cell=''; }
+    else if(ch==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+    else if(ch!=='\r') cell+=ch;
+  }
+  if(cell!==''||row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+const num = v => { const n=Number(String(v||'').replace(/[",\s]/g,'')); return isNaN(n)?0:n; };
+
+async function sheetLoad(){
+  const cfg = SHEET[G.country];
+  if(!cfg || !cfg.targets) return;
+  try{
+    const tRes = await fetch(cfg.targets);
+    if(!tRes.ok) throw 0;
+    const rows = parseCSV(await tRes.text());
+    const hIdx = rows.findIndex(r=>String(r[0]||'').includes('제품명'));
+    const prods=[]; let coverage=null;
+    for(let i=hIdx+1;i<rows.length;i++){
+      const r=rows[i], a=String(r[0]||'').trim(), asin=String(r[1]||'').trim();
+      if(a.includes('확보')){ coverage = r.slice(2,11).map(v=>num(v)||1); continue; }
+      if(!asin) continue;
+      prods.push({ name:a, sku:asin, asin, targets:r.slice(2,11).map(num), s7:0, d30:0, fba:0, pl3:0 });
+    }
+    if(cfg.data){
+      const dRes = await fetch(cfg.data);
+      if(dRes.ok){
+        const dm={};
+        parseCSV(await dRes.text()).forEach(r=>{
+          const asin=String(r[0]||'').trim();
+          if(asin && asin.length>=10 && !asin.includes('ASIN')) dm[asin]={ s7:num(r[2]), d30:num(r[3]), fba:num(r[4]), pl3:num(r[6]) };
+        });
+        prods.forEach(p=>{ const d=dm[p.asin]; if(d) Object.assign(p, d); });
+      }
+    }
+    if(prods.length){ S.products = prods; if(coverage) S.coverage = coverage; }
+    localStorage.setItem(LS_KEY, JSON.stringify(G));
+    SYNC_MSG = (SHARED?'공유':'로컬')+' · 시트 동기화 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ SYNC_MSG='⚠️ 시트 불러오기 실패 — 마지막 데이터 표시 중'; }
+  render();
+}
+
+/* ---------- Supabase sync (REST, no SDK) ---------- */
+async function sbLoad(){
+  if(!SHARED) return;
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_state?select=country,data`, {
+      headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}` }});
+    if(!r.ok) throw new Error(r.status);
+    const rows = await r.json();
+    rows.forEach(row=>{ if(row.country && row.data) G.data[row.country]=row.data; });
+    S = G.data[G.country];
+    localStorage.setItem(LS_KEY, JSON.stringify(G));
+    SYNC_MSG='공유 모드 · 불러오기 완료 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ SYNC_MSG='⚠️ 서버 연결 실패 — 로컬 데이터 표시 중'; }
+  render();
+}
+let pushTimer=null;
+function sbPush(){
+  if(!SHARED || !EDIT_ON) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(async ()=>{
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_dashboard`, {
+        method:'POST',
+        headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json' },
+        body: JSON.stringify({ p_country:G.country, p_data:S, p_password:EDIT_PW })});
+      if(!r.ok){
+        const t = await r.text();
+        if(t.includes('bad_password')){ EDIT_ON=false; sessionStorage.removeItem('inv_edit_pw'); alert('수정 암호가 올바르지 않습니다. 저장되지 않았습니다.'); SYNC_MSG='⚠️ 암호 불일치 — 저장 안 됨'; }
+        else SYNC_MSG='⚠️ 저장 실패';
+      } else {
+        SYNC_MSG='저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+      }
+    }catch(e){ SYNC_MSG='⚠️ 저장 실패 (네트워크)'; }
+    renderHeader();
+  }, 800);
+}
+function save(){
+  S.updated = new Date().toISOString().slice(0,10);
+  localStorage.setItem(LS_KEY, JSON.stringify(G));
+  sbPush();
+}
+
+/* ================= calc (v4 logic) ================= */
+const fmt = n => (n==null||isNaN(n))?'–':Math.round(n).toLocaleString('ko-KR');
+const pct = x => isFinite(x)?Math.round(x*100)+'%':'–';
+function today(){ return new Date(); }
+function curIdx(){
+  const d=today();
+  const i = MONTHS.findIndex(mo=>mo.y===d.getFullYear()&&mo.m===d.getMonth()+1);
+  return i;
+}
+function remFrac(){
+  const d=today();
+  const dim = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  return (dim - d.getDate() + 1)/dim;
+}
+const tgt = (p,i) => (i>=0 && i<MONTHS.length) ? (Number(p.targets[i])||0) : 0;
+const cov = i => (i>=0 && i<MONTHS.length) ? (Number(S.coverage[i])||1) : 1;
+// sum of targets from month index `start`, spanning `span` months (fractional ok)
+function spanNeed(p, start, span){
+  let need=0, s=span;
+  for(let k=0;k<5 && s>0;k++){ need += tgt(p,start+k)*Math.min(1,s); s-=1; }
+  return need;
+}
+function transit(sku,dest){
+  return S.pipeline.filter(r=>r.sku===sku && r.dest===dest && r.status==='이동중')
+                   .reduce((a,r)=>a+(Number(r.qty)||0),0);
+}
+function calcRow(p){
+  const ci = curIdx();
+  const cT = tgt(p,ci);
+  const D  = Math.round(cT*remFrac());
+  const nT = tgt(p,ci+1);
+  const K  = cov(ci+1);
+  const pace = cT>0 ? ((Number(p.s7)||0)/7)/(cT/30) : 0;
+  const inF = transit(p.sku,'FBA'), in3 = transit(p.sku,'3PL');
+  const fba = Number(p.fba)||0, pl3 = Number(p.pl3)||0;
+  const fbaNeed = Math.round(D + spanNeed(p,ci+1,K));
+  const fbaPct = fbaNeed>0 ? (fba+inF)/fbaNeed : 1;
+  const three = Number(S.settings.threePL)||0;
+  const refill = three===0 ? 0 : Math.max(0, Math.round(fbaNeed-(fba+inF)));
+  const T = three===0 ? Math.max(K, Number(S.settings.seaLead)+Number(S.settings.buffer)) : K+three;
+  const sysNeed = Math.round(D + spanNeed(p,ci+1,T));
+  const totalHave = fba+inF+pl3+in3;
+  const order = Math.max(0, Math.round(sysNeed-totalHave));
+  const sysPct = sysNeed>0 ? totalHave/sysNeed : 1;
+  return {cT,D,nT,K,pace,fba,inF,pl3,in3,fbaNeed,fbaPct,refill,sysNeed,order,sysPct};
+}
+function statusPill(x){
+  if(x<0.6)  return '<span class="pill p-red">위험</span>';
+  if(x<0.95) return '<span class="pill p-amber">주의</span>';
+  return '<span class="pill p-green">양호</span>';
+}
+const pctClass = x => x<0.6?'cell-red':(x<0.95?'cell-amber':'cell-green');
+
+/* 월별 계획: levels & shipments (indices 4=9월 .. 8=1월) */
+function planLevels(p){ // L(m) for m=4..8
+  const L={};
+  for(let m=4;m<=8;m++) L[m]=Math.round(spanNeed(p,m,cov(m)));
+  return L;
+}
+function planShip(p){ // ship(m) for m=3(8월)..7(12월); ship(3)=L(4) since L(3)=t(3)
+  const L=planLevels(p), sh={};
+  sh[3]=L[4];
+  for(let m=4;m<=7;m++) sh[m]=Math.max(0, (m+1<=8?L[m+1]:0) + tgt(p,m) - L[m]);
+  return sh;
+}
+
+/* ================= header widgets ================= */
+function renderHeader(){
+  const meta = COUNTRY_META[G.country];
+  document.querySelector('.man-id').textContent = `PDRN SKINCARE / ${meta.title} / INVENTORY CONTROL`;
+  document.getElementById('countrySeg').innerHTML = Object.keys(COUNTRY_META).map(c=>
+    `<button class="${c===G.country?'on':''}" onclick="setCountry('${c}')">${COUNTRY_META[c].label}</button>`).join('');
+  const eb = document.getElementById('editBtn');
+  if(SHARED){ eb.style.display=''; eb.textContent = EDIT_ON ? '✓ 편집 중' : '🔒 편집'; eb.className = 'editbtn'+(EDIT_ON?' on':''); }
+  else eb.style.display='none';
+  document.getElementById('syncLine').textContent = (SHARED?'공유 모드 · ':'로컬 모드 (이 브라우저에만 저장) · ') + SYNC_MSG;
+  const three=Number(S.settings.threePL)||0;
+  document.getElementById('modeTag').textContent = three===0?'FBA 직행':'FBA + '+COUNTRY_META[G.country].wh+' '+three+'개월';
+  const pb=new Date(S.settings.pbdd+'T00:00:00');
+  const dd=Math.ceil((pb-today())/86400000);
+  document.getElementById('ddayTag').textContent = (S.settings.eventLabel||'행사')+' '+(dd>=0?'D-'+dd:'D+'+(-dd));
+
+}
+
+/* ================= views ================= */
+const TABS=[['dash','Dashboard'],['tgt','월별 목표'],['data','Data'],['pipe','Pipeline ✎'],['plan','월별 계획'],['set','설정 ✎']];
+let cur='dash';
+function renderNav(){
+  document.getElementById('nav').innerHTML = TABS.map(([k,l])=>
+    `<button class="${k===cur?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+}
+function go(k){ cur=k; render(); }
+
+function vDash(){
+  const ci=curIdx();
+  const octMissing = S.products.some(p=>(p.targets[3]||0)>0) && S.products.every(p=>(p.targets[5]||0)===0);
+  let warn = (octMissing ? `<div class="banner">⚠️ 10월 이후 월별 목표가 비어 있습니다 — '월별 목표' 탭에 10~12월 목표를 입력해야 '시스템 필요 총량'과 '한국 발주'가 정확해집니다 (현재는 과소 계산).</div>` : '') + (ci<0 ? `<div class="banner">오늘 날짜가 월별 목표 기간(2026.5~2027.1) 밖입니다. '월별 목표'의 기간을 갱신해 주세요. 아래는 참고용 계산입니다.</div>` : '');
+  const rows=S.products.map(p=>({p,c:calcRow(p)}));
+  const danger=rows.filter(r=>r.c.fbaPct<0.6).length;
+  const totRefill=rows.reduce((a,r)=>a+r.c.refill,0);
+  const totOrder=rows.reduce((a,r)=>a+r.c.order,0);
+  const K=cov(ci+1);
+  let h=warn+`<div class="kpis">
+    <div class="kpi ${danger?'warn':''}"><div class="k-lab">FBA 위험 SKU</div><div class="k-val">${danger}<span style="font-size:13px;color:var(--sub)"> / ${rows.length}</span></div><div class="k-sub">목표 대비 60% 미만</div></div>
+    <div class="kpi act"><div class="k-lab">${COUNTRY_META[G.country].wh}→FBA 보충 합계</div><div class="k-val">${fmt(totRefill)}</div><div class="k-sub">지금 출고 필요 수량</div></div>
+    <div class="kpi act"><div class="k-lab">한국 발주 합계</div><div class="k-val">${fmt(totOrder)}</div><div class="k-sub">해상 선적 필요 수량</div></div>
+    <div class="kpi"><div class="k-lab">익월초 확보 기준</div><div class="k-val">${K}<span style="font-size:13px;color:var(--sub)">개월</span></div><div class="k-sub">확보 스케줄 (월별 목표 탭)</div></div>
+  </div>`;
+  h+=`<div class="card"><div class="card-h"><h2>SKU별 현황</h2><span class="hint">보충 필요 = 당월 잔여 판매 + 익월 1일 필요 재고 − 현 보유 (이동중 포함)</span></div><div class="card-b twrap"><table><thead><tr>
+    <th>제품명</th><th>당월<br>목표</th><th>당월<br>잔여</th><th>익월<br>목표</th><th>페이스</th>
+    <th>FBA<br>재고</th><th>${COUNTRY_META[G.country].wh}→FBA<br>이동중</th><th>FBA 필요<br>(익월초 착지)</th><th>목표<br>대비</th><th>상태</th>
+    <th>FBA 보충<br>필요</th><th>${COUNTRY_META[G.country].wh}<br>재고</th><th>한국→${COUNTRY_META[G.country].wh}<br>이동중</th><th>시스템<br>필요 총량</th><th>한국 발주<br>필요</th><th>총 목표<br>대비</th>
+  </tr></thead><tbody>`;
+  rows.forEach(({p,c})=>{
+    const paceCls=c.pace<0.85?'num-red':(c.pace>=1.15?'num-hot':'');
+    h+=`<tr><td class="txt">${p.name}<br><span style="font-size:10.5px;color:var(--sub);font-family:var(--mono)">${p.asin}</span></td>
+      <td>${fmt(c.cT)}</td><td>${fmt(c.D)}</td><td>${fmt(c.nT)}</td>
+      <td class="ctr ${paceCls}">${pct(c.pace)}</td>
+      <td>${fmt(c.fba)}</td><td>${c.inF?fmt(c.inF):'·'}</td><td><b>${fmt(c.fbaNeed)}</b></td>
+      <td class="ctr ${pctClass(c.fbaPct)}">${pct(c.fbaPct)}</td><td class="ctr">${statusPill(c.fbaPct)}</td>
+      <td class="${c.refill>0?'num-hot':''}">${c.refill>0?fmt(c.refill):'·'}</td>
+      <td>${fmt(c.pl3)}</td><td>${c.in3?fmt(c.in3):'·'}</td>
+      <td>${fmt(c.sysNeed)}</td>
+      <td class="${c.order>0?'num-hot':''}"><b>${c.order>0?fmt(c.order):'·'}</b></td>
+      <td class="ctr ${pctClass(c.sysPct)}">${pct(c.sysPct)}</td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note"><b>읽는 법</b> · 페이스 = 최근 7일 실판매 ÷ 당월 목표 일평균 (85% 미만 빨강 = 목표 미달 추세, 115% 이상 주황 = 초과 소진 → 조기 보충 검토) ·
+  '한국 발주 필요'는 ${COUNTRY_META[G.country].wh} 목표 보유분(${S.settings.threePL}개월)까지 포함한 순수량입니다.</div></div>`;
+  return h;
+}
+
+function vTgt(){
+  if(sheetMode()){
+    let h=`<div class="card"><div class="card-h"><h2>월별 목표 (구글 시트 연동)</h2><span class="hint">이 탭은 보기 전용 — 수정은 구글 시트의 '월별 목표' 탭에서 (반영까지 최대 5분)</span></div><div class="card-b twrap"><table><thead><tr><th>제품명</th>`;
+    MONTHS.forEach(mo=>h+=`<th>${mLabel(mo)}</th>`);
+    h+=`</tr></thead><tbody>`;
+    S.products.forEach(p=>{
+      h+=`<tr><td class="txt">${p.name}</td>`;
+      MONTHS.forEach((mo,i)=>h+=`<td>${p.targets[i]?fmt(p.targets[i]):'·'}</td>`);
+      h+=`</tr>`;
+    });
+    h+=`<tr><td class="txt" style="background:var(--orange-soft);font-weight:700">월초 FBA 확보 개월수 ★</td>`;
+    MONTHS.forEach((mo,i)=>h+=`<td class="cell-hl"><b>${S.coverage[i]}</b></td>`);
+    h+=`</tr></tbody></table></div>
+    <div class="note">데이터 출처: 구글 시트 '월별 목표' 탭 (웹에 게시 CSV). 시트에서 목표·확보 개월수를 수정하면 이 화면과 모든 계산에 자동 반영됩니다.</div></div>`;
+    return h;
+  }
+
+  let h=`<div class="card"><div class="card-h"><h2>월별 목표 판매 수량</h2><span class="hint">수정하면 즉시 저장·재계산됩니다</span></div><div class="card-b twrap"><table><thead><tr><th>제품명</th>`;
+  MONTHS.forEach((mo,i)=>h+=`<th>${mLabel(mo)}${[6,7].includes(i)?' ⚠️':''}</th>`);
+  h+=`</tr></thead><tbody>`;
+  S.products.forEach((p,pi)=>{
+    h+=`<tr><td class="txt">${p.name}</td>`;
+    MONTHS.forEach((mo,i)=>{
+      h+=`<td><input type="number" min="0" value="${p.targets[i]??0}" onchange="setTgt(${pi},${i},this.value)"></td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`<tr><td class="txt" style="background:var(--orange-soft);font-weight:700">월초 FBA 확보 개월수 ★</td>`;
+  MONTHS.forEach((mo,i)=>{
+    h+=`<td class="cell-hl"><input type="number" min="0" step="0.5" value="${S.coverage[i]}" onchange="setCov(${i},this.value)" style="background:#fff"></td>`;
+  });
+  h+=`</tr></tbody></table></div>
+  <div class="note"><b>확보 개월수 해석</b> · 해당 월 1일에 FBA가 그 달부터 몇 개월치를 보유해야 하는가.
+  현재 스케줄: <b>9월=2</b> (PBDD 사전적재) / <b>10월=1</b> (행사 후 3PL 보충 전제) / <b>11월=2</b> (BFCM + 12월 FC 대란 대비) / <b>12월=2</b> (12월+1월).
+  12월을 1.5로 낮추면 1월분 절반을 1월 초 보충으로 돌려 Q4 성수기 보관료를 아낄 수 있습니다. ⚠️ 11월·1월(27) 수치는 추정 예시 — 확정 목표로 교체하세요.</div></div>`;
+  return h;
+}
+
+function vData(){
+  if(sheetMode()){
+    let h=`<div class="card"><div class="card-h"><h2>Data (구글 시트 연동)</h2><span class="hint">이 탭은 보기 전용 — 수정은 구글 시트의 'Data 입력' 탭에서 (반영까지 최대 5분)</span></div><div class="card-b twrap"><table><thead><tr>
+    <th>제품명</th><th>ASIN</th><th>7일 판매량</th><th>30일 판매량</th><th>FBA Available</th><th>${COUNTRY_META[G.country].wh} 재고</th></tr></thead><tbody>`;
+    S.products.forEach(p=>{
+      h+=`<tr><td class="txt">${p.name}</td><td class="ctr" style="font-size:12px">${p.asin}</td>
+      <td>${fmt(p.s7)}</td><td>${fmt(p.d30||0)}</td><td>${fmt(p.fba)}</td><td>${fmt(p.pl3)}</td></tr>`;
+    });
+    h+=`</tbody></table></div>
+    <div class="note">데이터 출처: 구글 시트 'Data 입력' 탭. 주 1~2회 Business Reports·FBA Inventory·${COUNTRY_META[G.country].wh} 재고를 시트에 붙여넣으면 자동 반영됩니다. 이동 중 물량은 여기가 아니라 <b>Pipeline 탭(웹)</b>에서 관리하세요.</div></div>`;
+    return h;
+  }
+
+  let h=`<div class="card"><div class="card-h"><h2>Data 입력</h2><span class="hint">주 1~2회 업데이트 · 마지막: ${S.updated||'—'}</span></div><div class="card-b twrap"><table><thead><tr>
+  <th>제품명</th><th>ASIN</th><th>7일 판매량</th><th>FBA Available</th><th>${COUNTRY_META[G.country].wh} 재고</th></tr></thead><tbody>`;
+  S.products.forEach((p,pi)=>{
+    h+=`<tr><td class="txt">${p.name}</td><td class="ctr" style="font-size:12px">${p.asin}</td>
+    <td><input type="number" min="0" value="${p.s7}" onchange="setP(${pi},'s7',this.value)"></td>
+    <td><input type="number" min="0" value="${p.fba}" onchange="setP(${pi},'fba',this.value)"></td>
+    <td><input type="number" min="0" value="${p.pl3}" onchange="setP(${pi},'pl3',this.value)"></td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note">7일 판매량 = Business Reports → By ASIN → Detail Page Sales and Traffic ·
+  FBA Available = Manage FBA Inventory · 3PL 재고 = 3PL WMS. 이동 중 물량은 여기 넣지 말고 Pipeline 탭에서 관리하세요 (이중 계산 방지).</div></div>`;
+  return h;
+}
+
+function vPipe(){
+  const opts=S.products.map(p=>`<option value="${p.sku}">${p.sku}</option>`).join('');
+  let h=`<div class="card"><div class="card-h"><h2>Pipeline 발송로그</h2><span class="hint">발송 1건 = 1행 · '이동중'만 Dashboard에 집계</span></div>
+  <div class="formrow">
+    <label>발송일<input type="date" id="npDate" value="${new Date().toISOString().slice(0,10)}"></label>
+    <label>SKU<select id="npSku">${opts}</select></label>
+    <label>수량<input type="number" id="npQty" min="1" style="width:100px"></label>
+    <label>운송<select id="npMode"><option>해상</option><option>항공</option><option>트럭</option></select></label>
+    <label>목적지<select id="npDest"><option>FBA</option><option value='3PL'>${COUNTRY_META[G.country].wh}(3PL)</option></select></label>
+    <label>ETA<input type="date" id="npEta"></label>
+    <label>메모<input type="text" id="npMemo" style="width:160px"></label>
+    <button class="btn primary" onclick="addPipe()">발송 추가</button>
+  </div>
+  <div class="card-b twrap"><table><thead><tr>
+  <th>발송일</th><th>SKU</th><th>수량</th><th>운송</th><th>목적지</th><th>ETA</th><th>상태</th><th>메모</th><th></th></tr></thead><tbody>`;
+  if(!S.pipeline.length) h+=`<tr><td colspan="9" class="ctr" style="color:var(--sub);padding:20px">발송 기록이 없습니다. 위에서 첫 발송을 추가하세요.</td></tr>`;
+  S.pipeline.forEach((r,i)=>{
+    const st=r.status==='이동중'?'p-amber':(r.status==='입고완료'?'p-green':'p-gray');
+    h+=`<tr><td class="ctr">${r.date}</td><td class="ctr">${r.sku}</td><td>${fmt(r.qty)}</td>
+    <td class="ctr">${r.mode}</td><td class="ctr">${r.dest}</td><td class="ctr">${r.eta||'–'}</td>
+    <td class="ctr"><select onchange="setPipe(${i},this.value)">
+      <option ${r.status==='이동중'?'selected':''}>이동중</option>
+      <option ${r.status==='입고완료'?'selected':''}>입고완료</option>
+      <option ${r.status==='취소'?'selected':''}>취소</option></select></td>
+    <td class="txt" style="font-size:12px;color:var(--sub)">${r.memo||''}</td>
+    <td class="ctr"><button class="btn sm danger" onclick="delPipe(${i})">삭제</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note"><b>운영 규칙</b> · 입고 확인 → 상태를 '입고완료'로 변경 → Data 입력 탭의 해당 재고(FBA 또는 3PL)에 수량 반영. 이 순서를 지켜야 이중 계산이 없습니다.</div></div>`;
+  return h;
+}
+
+function vPlan(){
+  const three=Number(S.settings.threePL)||0;
+  const mNames=['9/1','10/1','11/1','12/1',"1/1('27)"];
+  let h=`<div class="card"><div class="card-h"><h2>① 월초 필요 FBA 재고 레벨</h2><span class="hint">각 월 1일 착지 목표 = 그 달부터 확보 개월수만큼의 목표 합</span></div><div class="card-b twrap"><table><thead><tr><th>제품명</th>`;
+  mNames.forEach(n=>h+=`<th>${n} 필요</th>`); h+=`</tr></thead><tbody>`;
+  S.products.forEach(p=>{
+    const L=planLevels(p);
+    h+=`<tr><td class="txt">${p.name}</td>`;
+    for(let m=4;m<=8;m++) h+=`<td>${fmt(L[m])}</td>`;
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
+  h+=`<div class="card"><div class="card-h"><h2>② 3PL → FBA 월중 출고량</h2><span class="hint">출고량 = 익월초 레벨 + 당월 소진 − 당월초 레벨</span></div><div class="card-b twrap"><table><thead><tr>
+  <th>제품명</th><th>8월 출고</th><th>9월 출고</th><th>10월 출고 ⚠️최대</th><th>11월 출고</th><th>12월 출고</th></tr></thead><tbody>`;
+  S.products.forEach(p=>{
+    const sh=planShip(p);
+    h+=`<tr><td class="txt">${p.name}</td>`;
+    for(let m=3;m<=7;m++){
+      const v=three===0?'–':fmt(sh[m]);
+      h+=`<td class="${m===5?'cell-hl':''}">${v}</td>`;
+    }
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note"><b>출고 시점</b> · 8월분: 8/15~20 · 10월분(연중 최대): <b>11월분 10/8~12 + 12월분 10월 하순 분할 필수</b> (FC 입고 캐파) · 11월분: 11/20~25 ·
+  ${three===0?'<b>현재 FBA 단일 모드 — 이 블록은 비활성입니다.</b>':'현 재고 차감 순수량은 Dashboard 참고 (여기는 총량 계획).'}</div></div>`;
+
+  h+=`<div class="card"><div class="card-h"><h2>③ 한국 → 3PL 해상 선적 계획</h2><span class="hint">선적월 물량 = 도착월(+2개월)의 3PL→FBA 출고량</span></div><div class="card-b twrap"><table><thead><tr>
+  <th>제품명</th><th>7월 선적<br>(9월 도착)</th><th>8월 선적 ★<br>(10월 도착)</th><th>9월 선적<br>(11월 도착)</th><th>10월 선적<br>(12월 도착)</th></tr></thead><tbody>`;
+  S.products.forEach(p=>{
+    const sh=planShip(p);
+    h+=`<tr><td class="txt">${p.name}</td><td>${fmt(sh[4])}</td><td class="cell-hl"><b>${fmt(sh[5])}</b></td><td>${fmt(sh[6])}</td><td>${fmt(sh[7])}</td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note"><b>★ 8월 선적이 핵심</b> — 10월 대량 출고(11+12월분)를 받칩니다. 늦으면 부분 항공 전환 검토.
+  3PL 자체 보유분과 현 재고 부족분까지 반영한 순수량은 Dashboard '한국 발주 필요'를 쓰세요.
+  ${three===0?'FBA 단일 모드에서는 도착지가 FBA 직행 — FC 체크인 2~4주를 감안해 선적을 2주 앞당기세요.':''}</div></div>`;
+  return h;
+}
+
+function vSet(){
+  const s=S.settings;
+  const row=(lab,key,step,hint)=>`<tr><td class="txt">${lab}</td>
+    <td><input type="number" min="0" step="${step}" value="${s[key]}" onchange="setS('${key}',this.value)"></td>
+    <td class="txt" style="font-size:12px;color:var(--sub);white-space:normal">${hint}</td></tr>`;
+  let h=`<div class="card"><div class="card-h"><h2>운영 파라미터</h2></div><div class="card-b twrap"><table>
+  <thead><tr><th style="width:220px">항목</th><th style="width:120px">값</th><th>설명</th></tr></thead><tbody>
+  ${row('★ ${COUNTRY_META[G.country].wh} 보관 월수','threePL',0.5,'FBA 확보분 이후 3PL 추가 보유 개월수. <b>0 = 3PL 미운영</b> → FBA가 해상리드+버퍼를 직접 커버하는 단일 모드로 전체 자동 전환')}
+  ${row('해상 리드타임 (개월)','seaLead',0.5,'한국 → 미국 해상 운송')}
+  ${row('항공 리드타임 (개월)','airLead',0.5,'한국 → 미국 항공 운송')}
+  ${row('3PL→FBA 리드타임 (주)','plToFbaWeeks',1,'3PL 출고 → FC 입고 완료. Q4 후반 3~4주로 지연 가능')}
+  ${row('발주 버퍼 (개월)','buffer',0.5,'3PL 미운영 시 리드타임에 더하는 안전 여유')}
+  <tr><td class="txt">PBDD 행사일</td><td><input type="date" value="${s.pbdd}" onchange="setS('pbdd',this.value)"></td><td class="txt" style="font-size:12px;color:var(--sub)">헤더 D-day의 기준일</td></tr>
+  </tbody></table></div></div>`;
+
+  if(sheetMode()){
+    h+=`<div class="card"><div class="card-h"><h2>제품 관리 (구글 시트 연동)</h2><span class="hint">제품 추가·삭제는 시트 '월별 목표' 탭에서 — 행을 추가하면 자동 반영</span></div><div class="card-b twrap"><table><thead><tr><th>제품명</th><th>ASIN</th></tr></thead><tbody>`;
+    S.products.forEach(p=>{ h+=`<tr><td class="txt">${p.name}</td><td class="ctr">${p.asin}</td></tr>`; });
+    h+=`</tbody></table></div></div>`;
+    return h;
+  }
+  h+=`<div class="card"><div class="card-h"><h2>제품 관리</h2><span class="hint">추가 시 월별 목표·Data 탭에 자동 반영</span></div>
+  <div class="formrow">
+    <label>제품명<input type="text" id="nprName" style="width:180px"></label>
+    <label>SKU<input type="text" id="nprSku" style="width:120px"></label>
+    <label>ASIN<input type="text" id="nprAsin" style="width:130px"></label>
+    <button class="btn primary" onclick="addProd()">제품 추가</button>
+  </div>
+  <div class="card-b twrap"><table><thead><tr><th>제품명</th><th>SKU</th><th>ASIN</th><th></th></tr></thead><tbody>`;
+  S.products.forEach((p,i)=>{
+    h+=`<tr><td class="txt">${p.name}</td><td class="ctr">${p.sku}</td><td class="ctr">${p.asin}</td>
+    <td class="ctr"><button class="btn sm danger" onclick="delProd(${i})">삭제</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>
+  <div class="note">제품 삭제는 해당 SKU의 목표·재고·발송 기록을 모두 지웁니다. 삭제 전 백업을 권장합니다.</div></div>`;
+  return h;
+}
+
+/* ================= mutations ================= */
+function setTgt__inner(pi,i,v){ S.products[pi].targets[i]=Number(v)||0; save(); render(); }
+function setCov__inner(i,v){ S.coverage[i]=Number(v)||0; save(); render(); }
+function setP__inner(pi,k,v){ S.products[pi][k]=Number(v)||0; save(); render(); }
+function setS__inner(k,v){ S.settings[k]=(k==='pbdd')?v:(Number(v)||0); save(); render(); }
+function addPipe__inner(){
+  const g=id=>document.getElementById(id).value;
+  const qty=Number(g('npQty'));
+  if(!qty){ alert('수량을 입력하세요.'); return; }
+  S.pipeline.unshift({date:g('npDate'),sku:g('npSku'),qty,mode:g('npMode'),dest:g('npDest'),eta:g('npEta'),status:'이동중',memo:g('npMemo')});
+  save(); render();
+}
+function setPipe__inner(i,v){ S.pipeline[i].status=v; save(); render(); }
+function delPipe__inner(i){ S.pipeline.splice(i,1); save(); render(); }
+function addProd__inner(){
+  const name=document.getElementById('nprName').value.trim();
+  const sku=document.getElementById('nprSku').value.trim();
+  const asin=document.getElementById('nprAsin').value.trim();
+  if(!name||!sku){ alert('제품명과 SKU를 입력하세요.'); return; }
+  S.products.push({name,sku,asin,targets:MONTHS.map(()=>0),s7:0,fba:0,pl3:0});
+  save(); render();
+}
+function delProd__inner(i){
+  if(!confirm(`'${S.products[i].name}' 제품과 관련 기록을 모두 삭제할까요?`)) return;
+  const sku=S.products[i].sku;
+  S.pipeline=S.pipeline.filter(r=>r.sku!==sku);
+  S.products.splice(i,1);
+  save(); render();
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(G,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='inventory_all_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function importJSON(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ const d=JSON.parse(e.target.result);
+      if(d.data && d.data.US){ G=d; S=G.data[G.country]; }
+      else if(d.products && d.settings){ G.data[G.country]=d; S=G.data[G.country]; }
+      else throw 0;
+      save(); render(); alert('복원 완료.');
+    }catch(err){ alert('파일 형식이 올바르지 않습니다.'); }
+  };
+  r.readAsText(f); inp.value='';
+}
+function resetAll(){
+  if(!guard()) return;
+  if(!confirm(G.country+' 데이터를 초기값으로 되돌릴까요? 되돌릴 수 없습니다.')) return;
+  G.data[G.country]=JSON.parse(JSON.stringify(G.country==='US'?US_DEFAULT:JP_DEFAULT));
+  S=G.data[G.country]; save(); render();
+}
+
+function setTgt(...a){ if(!guard()) return; setTgt__inner(...a); }
+function setCov(...a){ if(!guard()) return; setCov__inner(...a); }
+function setP(...a){ if(!guard()) return; setP__inner(...a); }
+function setS(...a){ if(!guard()) return; setS__inner(...a); }
+function addPipe(...a){ if(!guard()) return; addPipe__inner(...a); }
+function setPipe(...a){ if(!guard()) return; setPipe__inner(...a); }
+function delPipe(...a){ if(!guard()) return; delPipe__inner(...a); }
+function addProd(...a){ if(!guard()) return; addProd__inner(...a); }
+function delProd(...a){ if(!guard()) return; delProd__inner(...a); }
+
+/* ================= render ================= */
+function render(){
+  renderHeader(); renderNav();
+  const v={dash:vDash,tgt:vTgt,data:vData,pipe:vPipe,plan:vPlan,set:vSet}[cur];
+  document.getElementById('main').innerHTML='<div class="view">'+v()+'</div>';
+}
+render();
+sbLoad();
+sheetLoad();
+</script>
+</body>
+</html>
