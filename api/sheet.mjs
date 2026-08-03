@@ -68,7 +68,21 @@ async function getToken(){
   return cachedToken.token;
 }
 
+// 시트 수식 오류(#REF! 등)는 절대 통과시키지 않는다. index.html 의 num() 은
+// 숫자로 못 읽는 값을 0 으로 바꾸는데, 재고·판매가 0 이 되면 '한국 발주 필요'가
+// 실재고를 무시한 거대한 숫자로 튄다. 조용히 틀린 발주보다 대놓고 실패가 낫다.
+const SHEET_ERR = /^#(REF|N\/A|VALUE|DIV\/0|NAME|NUM|ERROR)[!?]/;
+
+const colName = i => {
+  let s = '';
+  for(let n = i; n >= 0; n = Math.floor(n / 26) - 1) s = String.fromCharCode(65 + n % 26) + s;
+  return s;
+};
+
 const csvCell = v => {
+  // UNFORMATTED_VALUE 는 시트 수식의 부동소수 오차를 그대로 준다
+  // (33447.700000000004). 표시용으로 그 잡음만 걷어낸다 — 값 자체는 안 바꾼다.
+  if(typeof v === 'number' && Number.isFinite(v)) v = Math.round(v * 1e6) / 1e6;
   const s = String(v ?? '');
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
@@ -104,6 +118,22 @@ export default async function handler(req, res){
     }
 
     const rows = (await r.json()).values || [];
+
+    const bad = [];
+    rows.forEach((row, ri) => row.forEach((v, ci) => {
+      if(SHEET_ERR.test(String(v ?? ''))) bad.push(`${colName(ci)}${ri + 1}`);
+    }));
+    if(bad.length){
+      return res.status(502).json({
+        error: 'sheet_formula_error',
+        tab: sheetName,
+        count: bad.length,
+        cells: bad.slice(0, 12),
+        hint: 'IMPORTRANGE 라면 시트를 데스크톱 브라우저로 열어 "액세스 허용"을 한 번 눌러야 합니다. '
+            + '오류 셀을 0으로 읽으면 발주 수량이 잘못 계산되므로 의도적으로 실패시킵니다.',
+      });
+    }
+
     const width = Math.max(MIN_COLS, ...rows.map(x => x.length), 0);
     const csv = rows
       .map(row => Array.from({ length: width }, (_, i) => csvCell(row[i])).join(','))
