@@ -218,7 +218,7 @@ async function setActive(id){
     const [cur,prv]=await Promise.all([fetchWindow(def.weeks), def.prev.length?fetchWindow(def.prev):null]);
     D.st=cur.st; D.tg=cur.tg; D.cp=cur.cp; D.ap=cur.ap;
     D.period=def.combo?def.name+' · '+cur.period:cur.period;
-    D.isEvent=cur.isEvent; D.notes=cur.notes; D.combo=def.combo?def:null;
+    D.isEvent=cur.isEvent; D.notes=cur.notes; D.combo=def.combo?def:null; D.weeks=def.weeks;
     D.prev=prv?{id:'__prev',label:prv.period,st:prv.st,tg:prv.tg,cp:prv.cp,ap:prv.ap}:null;
     cmpData=null;
     pfNames().forEach(n=>{ if(!S.pfCfg[n])S.pfCfg[n]={targetAcos:S.settings.targetAcos}; });
@@ -329,6 +329,25 @@ function acosDelta(cur,prev){
   if(Math.abs(d)<0.05)return '<span class="dim">— 0pp</span>';
   return `<span style="color:${d<0?'var(--good)':'var(--bad)'}">${d>0?'▲':'▼'} ${fmt(Math.abs(d),1)}pp</span>`;
 }
+/* 상단 KPI 는 서치텀 리포트 기준인데 캠페인 리포트만 있는 주차가 섞이면
+   같은 화면 안에서 지출이 몇 배씩 어긋난다. 그 불일치를 숨기지 않고 알린다. */
+function stCoverage(){
+  const ids=D.weeks||[];
+  if(!ids.length||!D.cp.length)return '';
+  const have=ids.filter(id=>(META.weeks.find(w=>w.id===id)?.counts.st||0)>0);
+  if(have.length===ids.length)return '';
+  const box=b=>`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">${b}
+    <div class="hint" style="margin-top:6px">시트에 해당 주차 서치텀·타겟팅 리포트를 append 한 뒤 <b>npm run update</b> 를 실행하면 채워집니다.</div></div></div>`;
+  const cpCost=agg(byPf(D.cp,ovPf)).cost;
+  if(!have.length) return box(`<b>이 기간에는 서치텀·타겟팅 리포트가 없습니다</b>
+    <div class="hint" style="margin-top:6px">아래 KPI는 서치텀 기준이라 비어 있습니다. 캠페인 기준 지출은 <b>${money(cpCost)}</b> —
+    <b>광고 유형별 성과</b> 표와 캠페인 탭에서 확인하세요.</div>`);
+  const lbl=have.map(id=>esc(String(META.weeks.find(w=>w.id===id).label).split(' – ')[0])).join(', ');
+  return box(`<b>아래 KPI는 이 기간 ${ids.length}주 중 ${have.length}주만 반영합니다</b>
+    <div class="hint" style="margin-top:6px">서치텀 리포트가 있는 주차는 <b>${lbl}</b> 뿐입니다.
+    KPI 지출 <b>${money(agg(byPf(D.st,ovPf)).cost)}</b> vs 캠페인 기준 전체 지출 <b>${money(cpCost)}</b> —
+    이 차이는 데이터 누락이며 실제 성과 변화가 아닙니다.</div>`);
+}
 function renderOverview(){
   const st=byPf(D.st,ovPf), cp=byPf(D.cp,ovPf);
   const a=agg(st);
@@ -355,10 +374,7 @@ function renderOverview(){
   view.innerHTML=`
     <div class="page-head"><div><h1>개요</h1><p>${esc(D.account)} · ${esc(D.period)}${cmpSnap?` <span class="dim">↔ ${esc(cmpSnap.label)} 비교 중</span>`:''}</p></div>
       <div class="toolbar"><select class="inp" onchange="setOvCmp(this.value)">${cmpOpts}</select>${pfSelector(ovPf,'setOvPf')}</div></div>
-    ${!D.st.length&&D.cp.length?`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">
-      <b>이 기간에는 서치텀·타겟팅 리포트가 없습니다</b>
-      <div class="hint" style="margin-top:6px">아래 KPI는 서치텀 리포트 기준이라 비어 있습니다. 캠페인 합계는 <b>광고 유형별 성과</b> 표와 캠페인 탭에서 확인하세요 —
-      시트에 해당 주차 리포트를 append 한 뒤 <b>npm run update</b> 를 실행하면 채워집니다.</div></div></div>`:''}
+    ${stCoverage()}
     <div class="kpi-grid">
       <div class="kpi"><div class="k-label">지출</div><div class="k-val">${money0(a.cost)}</div>${sub(a.cost,b?.cost,true)}</div>
       <div class="kpi"><div class="k-label">광고 매출</div><div class="k-val">${money0(a.sales)}</div>${b?sub(a.sales,b.sales,false):`<div class="k-sub">NTB 비중 ${pct(a.ntbShare)}</div>`}</div>

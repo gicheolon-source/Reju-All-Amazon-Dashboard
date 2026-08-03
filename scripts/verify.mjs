@@ -63,7 +63,7 @@ for (const w of weeks) {
   console.log(`  ${w}  ${pad(Number(r.clk).toLocaleString(), 9)}  ${pad(money(r.cost), 11)}` +
     `  ${pad(Number(r.pur).toLocaleString(), 8)}  ${pad(money(r.sales), 12)}  ${pad(acos ? acos.toFixed(1) + '%' : '—', 8)}` +
     (wow != null ? `   광고비 ${wow >= 0 ? '+' : ''}${wow.toFixed(0)}% WoW` : '') +
-    (ev?.on ? `  [행사주${ev.note ? ' ' + ev.note : ''}]` : ''));
+    (ev?.on ? `  [행사주${ev.note && ev.note !== '행사주' ? ' · ' + ev.note : ''}]` : ''));
   if (wow != null && Math.abs(wow) > 100 && !ev?.on)
     warns.push(`${w}: 광고비가 전주 대비 ${wow.toFixed(0)}% — 행사주라면 scripts/set-week.mjs 로 표시하고, 아니면 중복 적재를 확인하세요.`);
   prev = r;
