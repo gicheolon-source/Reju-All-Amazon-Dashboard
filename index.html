@@ -41,7 +41,8 @@ nav a:hover{color:#fff}
 .cal-btn:hover{background:rgba(255,255,255,.15)}
 .cal-btn .cal-n{color:#FFC978;font-weight:600}
 .cal-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:306px;padding:12px;
-  background:var(--card);color:var(--ink);border:1px solid var(--line2);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.2)}
+  background:var(--card);color:var(--ink);border:1px solid var(--line2);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.2);
+  user-select:none;-webkit-user-select:none}   /* 클릭이 글자 선택으로 번지지 않게 */
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cal-head b{font-size:13px}
 .cal-nav{width:26px;height:26px;line-height:1;font-size:15px;color:var(--ink2);background:none;border:1px solid var(--line2);border-radius:6px}
@@ -56,6 +57,10 @@ nav a:hover{color:#fff}
 .cal-row:not(.off):hover{background:var(--accent-soft)}
 .cal-row.sel{background:var(--accent);color:#fff}
 .cal-row.sel .d.out{color:rgba(255,255,255,.5)}
+.cal-row.anchor{outline:2px dashed var(--accent);outline-offset:-2px}
+.cal-mode{display:flex;gap:0;margin-bottom:8px;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.cal-mode button{flex:1;padding:5px 0;font-size:11.5px;font-weight:600;background:var(--card);color:var(--ink2);border:0}
+.cal-mode button.on{background:var(--accent);color:#fff}
 .cal-row .ev{position:absolute;right:3px;top:0;font-size:9px;font-style:normal;color:var(--accent)}
 .cal-row.sel .ev{color:#FFE7C2}
 .cal-foot{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.75}
@@ -222,6 +227,8 @@ function fetchWindow(weeks){
    비교 기준(D.prev)은 같은 길이의 직전 창이다. */
 let SEL={from:'',to:''};
 let calMonth='', calOpen=false;
+let calMode='one';      // 'one' = 클릭한 주만, 'range' = 시작→끝 두 번 클릭
+let calAnchor=null;     // range 모드에서 먼저 클릭한 시작 주
 
 const DAY=86400000;
 const tOf=d=>Date.parse(d+'T00:00:00Z');
@@ -278,9 +285,15 @@ function renderCal(){
       return `<span class="d${d.getUTCMonth()+1!==M?' out':''}">${d.getUTCDate()}</span>`;
     }).join('');
     const tip=w ? `${w.label} · 서치텀 ${fmt(w.counts.st)}행 · 캠페인 ${fmt(w.counts.cp)}행` : '적재된 데이터 없음';
-    return `<div class="cal-row${w?'':' off'}${sel.has(ws)?' sel':''}" title="${esc(tip)}"`
-      + (w?` onclick="pickWeek('${ws}',event)"`:'') + `>${cells}${w&&w.isEvent?'<i class="ev">★</i>':''}</div>`;
+    return `<div class="cal-row${w?'':' off'}${sel.has(ws)?' sel':''}${calAnchor===ws?' anchor':''}" title="${esc(tip)}"`
+      + (w?` onclick="pickWeek('${ws}')"`:'') + `>${cells}${w&&w.isEvent?'<i class="ev">★</i>':''}</div>`;
   }).join('');
+
+  const guide = calMode==='range'
+    ? (calAnchor
+        ? `시작 <b>${esc(weekById(calAnchor).label.split(' – ')[0])}</b> — 이제 <b>끝 주</b>를 클릭하세요`
+        : `<b>시작 주</b>를 클릭한 뒤 <b>끝 주</b>를 클릭하세요`)
+    : `주를 클릭하면 그 주만 봅니다`;
 
   pop.innerHTML=`
     <div class="cal-head">
@@ -288,21 +301,27 @@ function renderCal(){
       <b>${Y}년 ${M}월</b>
       <button class="cal-nav" onclick="calNav(1)" ${calMonth>=maxM?'disabled':''}>›</button>
     </div>
+    <div class="cal-mode">
+      <button class="${calMode==='one'?'on':''}" onclick="setCalMode('one')">한 주</button>
+      <button class="${calMode==='range'?'on':''}" onclick="setCalMode('range')">범위 합산</button>
+    </div>
     <div class="cal-dow">${['일','월','화','수','목','금','토'].map(d=>`<span>${d}</span>`).join('')}</div>
     ${rows}
     <div class="cal-foot">
       선택 <b>${esc(selLabel())||'—'}</b>${sel.size>1?` · ${sel.size}주 합산`:''}<br>
-      한 주 클릭 · <b>Shift+클릭</b>으로 여러 주 합산 · <span style="color:var(--accent)">★</span> 행사주
+      ${guide} · <span style="color:var(--accent)">★</span> 행사주
     </div>`;
 }
+function setCalMode(m){ calMode=m; calAnchor=null; renderCal(); }
 function calNav(d){
   const [Y,M]=calMonth.split('-').map(Number);
   calMonth=ymd(Date.UTC(Y, M-1+d, 1)).slice(0,7);
   renderCal();
 }
-function pickWeek(ws,ev){
-  if(ev?.shiftKey && SEL.from) SEL.to=ws;      // 기준점은 그대로, 끝만 옮긴다
-  else SEL={from:ws,to:ws};
+function pickWeek(ws){
+  if(calMode==='one'){ SEL={from:ws,to:ws}; calAnchor=null; }
+  else if(!calAnchor){ calAnchor=ws; SEL={from:ws,to:ws}; }   // 시작 주 — 우선 그 주만 보여준다
+  else { SEL={from:calAnchor,to:ws}; calAnchor=null; }        // 끝 주 — 범위 확정
   renderCal();
   return applySel();
 }
@@ -310,6 +329,7 @@ function toggleCal(ev){
   ev?.stopPropagation();
   calOpen=!calOpen;
   document.getElementById('calPop').hidden=!calOpen;
+  calAnchor=null;                                     // 열 때마다 범위 선택은 처음부터
   if(calOpen){ calMonth=(SEL.to||weekIds().slice(-1)[0]||'').slice(0,7); renderCal(); }
 }
 /* click 이 아니라 mousedown 으로 판정한다 — renderCal() 이 팝업 내부를 다시 그리면
@@ -351,7 +371,7 @@ async function applySel(){
 }
 /* 한 주만 보기 — 데이터·설정 탭의 '이 주차 보기' 등에서 쓴다 */
 function setActive(id){
-  SEL={from:id,to:id};
+  SEL={from:id,to:id}; calAnchor=null;
   if(calOpen)renderCal();
   return applySel();
 }
