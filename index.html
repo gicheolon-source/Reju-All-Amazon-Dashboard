@@ -205,7 +205,7 @@ function expand(E){
   return {
     st:E.st.map(r=>({pf:P[r[0]],camp:C[r[1]],ag:G[r[2]],term:r[3],imp:r[4],clk:r[5],cost:r[6],pur:r[7],sales:r[8],units:r[9],ntbSales:r[10],dpv:r[11]})),
     tg:E.tg.map(r=>({pf:P[r[0]],camp:C[r[1]],ag:G[r[2]],tgt:r[3],mt:r[4],bid:r[5],status:String(r[6]||'').toUpperCase().slice(0,1),imp:r[7],clk:r[8],cost:r[9],pur:r[10],sales:r[11],units:r[12],_sd:r[13]})),
-    cp:E.cp.map(r=>({pf:P[r[0]],camp:C[r[1]],prod:r[2],imp:r[3],clk:r[4],cost:r[5],pur:r[6],sales:r[7],ntbPur:r[8]})),
+    cp:E.cp.map(r=>({pf:P[r[0]],camp:C[r[1]],prod:r[2],imp:r[3],clk:r[4],cost:r[5],pur:r[6],sales:r[7],ntbPur:r[8],ntbSales:r[9],dpv:r[10]})),
     ap:E.ap.map(r=>({pf:P[r[0]],camp:C[r[1]],asin:r[2],title:r[3],imp:r[4],clk:r[5],cost:r[6],pur:r[7],sales:r[8],units:r[9]})),
     period:E.period, isEvent:!!E.isEvent, notes:E.notes||[], weeks:E.weeks,
   };
@@ -380,7 +380,8 @@ function pfNames(){
   const set=new Set();
   D.st.forEach(r=>set.add(r.pf)); D.tg.forEach(r=>set.add(r.pf)); D.cp.forEach(r=>set.add(r.pf));
   set.delete('');
-  const cost={}; D.st.forEach(r=>cost[r.pf]=(cost[r.pf]||0)+r.cost);
+  /* 정렬은 캠페인 지출(총액) 기준 — 화면의 금액 순서와 일치해야 한다 */
+  const cost={}; D.cp.forEach(r=>cost[r.pf]=(cost[r.pf]||0)+r.cost);
   return [...set].sort((a,b)=>(cost[b]||0)-(cost[a]||0));
 }
 const pfColor=n=>PALETTE[Math.max(0,pfNames().indexOf(n))%PALETTE.length];
@@ -468,33 +469,35 @@ function stCoverage(){
   const have=ids.filter(id=>(META.weeks.find(w=>w.id===id)?.counts.st||0)>0);
   if(have.length===ids.length)return '';
   const box=b=>`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">${b}
-    <div class="hint" style="margin-top:6px">시트에 해당 주차 서치텀·타겟팅 리포트를 append 한 뒤 <b>npm run update</b> 를 실행하면 채워집니다.</div></div></div>`;
-  const cpCost=agg(byPf(D.cp,ovPf)).cost;
-  if(!have.length) return box(`<b>이 기간에는 서치텀·타겟팅 리포트가 없습니다</b>
-    <div class="hint" style="margin-top:6px">아래 KPI는 서치텀 기준이라 비어 있습니다. 캠페인 기준 지출은 <b>${money(cpCost)}</b> —
-    <b>광고 유형별 성과</b> 표와 캠페인 탭에서 확인하세요.</div>`);
+    <div class="hint" style="margin-top:6px">해당 주차 서치텀 리포트를 <b>reports/</b> 에 넣고 <b>npm run load</b> 를 실행하면 채워집니다.</div></div></div>`;
+  const missing=ids.length-have.length;
+  if(!have.length) return box(`<b>이 기간에는 서치텀 리포트가 없습니다 — 검색어 단위 분석만 비어 있습니다</b>
+    <div class="hint" style="margin-top:6px">상단 KPI와 캠페인·포트폴리오 탭은 캠페인 리포트 기준이라 정상입니다.
+    비는 것은 <b>서치텀 판정 요약 · 지출 낭비/효율 TOP · 서치텀 탭</b>입니다.</div>`);
   const lbl=have.map(id=>esc(String(META.weeks.find(w=>w.id===id).label).split(' – ')[0])).join(', ');
-  return box(`<b>아래 KPI는 이 기간 ${ids.length}주 중 ${have.length}주만 반영합니다</b>
-    <div class="hint" style="margin-top:6px">서치텀 리포트가 있는 주차는 <b>${lbl}</b> 뿐입니다.
-    KPI 지출 <b>${money(agg(byPf(D.st,ovPf)).cost)}</b> vs 캠페인 기준 전체 지출 <b>${money(cpCost)}</b> —
-    이 차이는 데이터 누락이며 실제 성과 변화가 아닙니다.</div>`);
+  return box(`<b>검색어 단위 분석은 이 기간 ${ids.length}주 중 ${have.length}주만 반영합니다</b>
+    <div class="hint" style="margin-top:6px">서치텀 리포트가 있는 주차는 <b>${lbl}</b> 뿐입니다 (${missing}주 누락).
+    상단 KPI는 캠페인 기준이라 ${ids.length}주 전체가 반영되니, 아래 검색어 표와 기간이 다릅니다.</div>`);
 }
 function renderOverview(){
   const st=byPf(D.st,ovPf), cp=byPf(D.cp,ovPf);
-  const a=agg(st);
+  /* 상단 KPI 는 캠페인 리포트 기준이다 — 그게 광고비·매출의 진짜 총액이다.
+     서치텀 리포트는 SB/SD 일부가 빠져 총액의 80~87% 밖에 담지 못하므로
+     검색어 단위 분석(판정 요약·낭비/효율 TOP)에만 쓴다. */
+  const a=agg(cp), aSt=agg(st);
   const target=ovPf?pfAcos(ovPf):S.settings.targetAcos;
   const acosCls=a.acos==null?'':(a.acos<=target?'good':'bad');
   // comparison
   let cmpSnap=ovCmp==='auto'?cmpAuto():(ovCmp!=='none'?cmpData:null);
   if(cmpSnap&&cmpSnap.id&&selWeeks().includes(cmpSnap.id))cmpSnap=null;
-  const b=cmpSnap?agg(byPf(cmpSnap.st||[],ovPf)):null;
+  const b=cmpSnap?agg(byPf(cmpSnap.cp||[],ovPf)):null;
   const sub=(cur,prev,inv)=>b?`<div class="k-sub">${deltaHtml(cur,prev,inv)} <span class="dim">vs ${esc(cmpSnap.label.split('–')[0].trim())}~</span></div>`:'';
   const terms=[...groupBy(st.filter(r=>r.term),r=>r.term).values()].map(rs=>{const ag=agg(rs);return {a:ag,v:verdict(ag,target)};});
   const vc={neg:0,scale:0,harvest:0,warn:0,watch:0}; terms.forEach(x=>vc[x.v.k]++);
   const negCost=terms.filter(x=>x.v.k==='neg').reduce((s,x)=>s+x.a.cost,0);
   const prodSum=[...groupBy(cp,r=>r.prod).entries()].map(([p,rs])=>({p,a:agg(rs)})).sort((x,y)=>y.a.cost-x.a.cost);
   const prodTot=prodSum.reduce((s,x)=>s+x.a.cost,0)||1;
-  const pfRows=pfNames().map(n=>({n,a:agg(D.st.filter(r=>r.pf===n))})).filter(x=>x.a.cost>0||x.a.sales>0);
+  const pfRows=pfNames().map(n=>({n,a:agg(D.cp.filter(r=>r.pf===n))})).filter(x=>x.a.cost>0||x.a.sales>0);
   const pfTot=pfRows.reduce((s,x)=>s+x.a.cost,0)||1;
   const tlist=[...groupBy(st.filter(r=>r.term),r=>r.term).entries()].map(([t,rs])=>({t,a:agg(rs)}));
   const waste=tlist.filter(x=>x.a.pur===0).sort((x,y)=>y.a.cost-x.a.cost).slice(0,6);
@@ -504,12 +507,13 @@ function renderOverview(){
     .concat(META.weeks.slice().reverse().filter(w=>!selWeeks().includes(w.id))
       .map(w=>`<option value="${w.id}" ${ovCmp===w.id?'selected':''}>비교: ${esc(w.label)}${w.isEvent?' ★':''}</option>`)).join('');
   view.innerHTML=`
-    <div class="page-head"><div><h1>개요</h1><p>${esc(D.account)} · ${esc(D.period)}${cmpSnap?` <span class="dim">↔ ${esc(cmpSnap.label)} 비교 중</span>`:''}</p></div>
+    <div class="page-head"><div><h1>개요</h1><p>${esc(D.account)} · ${esc(D.period)}${cmpSnap?` <span class="dim">↔ ${esc(cmpSnap.label)} 비교 중</span>`:''}
+      <span class="dim"> · KPI는 캠페인 리포트(총액) 기준</span></p></div>
       <div class="toolbar"><select class="inp" onchange="setOvCmp(this.value)">${cmpOpts}</select>${pfSelector(ovPf,'setOvPf')}</div></div>
     ${stCoverage()}
     <div class="kpi-grid">
       <div class="kpi"><div class="k-label">지출</div><div class="k-val">${money0(a.cost)}</div>${sub(a.cost,b?.cost,true)}</div>
-      <div class="kpi"><div class="k-label">광고 매출</div><div class="k-val">${money0(a.sales)}</div>${b?sub(a.sales,b.sales,false):`<div class="k-sub">NTB 비중 ${pct(a.ntbShare)}</div>`}</div>
+      <div class="kpi"><div class="k-label">광고 매출</div><div class="k-val">${money0(a.sales)}</div>${b?sub(a.sales,b.sales,false):`<div class="k-sub" title="NTB 매출은 캠페인 리포트에 비어 있어 서치텀 리포트 기준으로 계산합니다">NTB 비중 ${pct(aSt.ntbShare)} <span class="dim">(서치텀)</span></div>`}</div>
       <div class="kpi"><div class="k-label">ACOS</div><div class="k-val ${acosCls}">${a.acos===Infinity?'∞':pct(a.acos)}</div><div class="k-sub">${b?acosDelta(a.acos,b.acos):'목표 '+pct(target,0)}</div></div>
       <div class="kpi"><div class="k-label">ROAS</div><div class="k-val">${a.roas==null?'–':fmt(a.roas,2)}</div>${sub(a.roas,b?.roas,false)}</div>
       <div class="kpi"><div class="k-label">구매</div><div class="k-val">${fmt(a.pur)}</div>${b?sub(a.pur,b.pur,false):`<div class="k-sub">CVR ${pct(a.cvr)}</div>`}</div>
@@ -520,7 +524,7 @@ function renderOverview(){
         <div class="tbl-wrap"><table><thead><tr><th class="l">유형</th><th>지출</th><th>매출</th><th>구매</th><th>ACOS</th><th>지출 비중</th></tr></thead><tbody>
         ${prodSum.map(x=>`<tr><td class="l"><span class="prod ${x.p}">${x.p}</span></td><td>${money(x.a.cost)}</td><td>${money(x.a.sales)}</td><td>${fmt(x.a.pur)}</td>${acosCell(x.a,target)}<td><span class="share-bar"><i style="width:${x.a.cost/prodTot*100}%"></i></span> <span class="dim">${pct(x.a.cost/prodTot*100,0)}</span></td></tr>`).join('')||'<tr><td colspan=6 class="l dim">캠페인 리포트 없음 — 데이터·설정에서 업로드</td></tr>'}
         </tbody></table></div></div>
-      <div class="card" style="margin:0"><div class="card-head"><h2>서치텀 판정 요약<span class="sub">검색어 ${fmt(tlist.length)}개</span></h2><a href="#/terms" class="btn sm" style="text-decoration:none">전체 보기 →</a></div>
+      <div class="card" style="margin:0"><div class="card-head"><h2>서치텀 판정 요약<span class="sub">검색어 ${fmt(tlist.length)}개${a.cost?` · 지출 커버리지 ${pct(aSt.cost/a.cost*100,0)}`:''}</span></h2><a href="#/terms" class="btn sm" style="text-decoration:none">전체 보기 →</a></div>
         <div class="card-body">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             <span class="chip neg">제외 후보 ${vc.neg}</span><span class="chip harvest">수확·이관 ${vc.harvest}</span>
@@ -549,16 +553,18 @@ function renderOverview(){
 /* ═══════════════ Portfolio ═══════════════ */
 function renderPortfolio(){
   const cards=pfNames().map(n=>{
-    const rows=D.st.filter(r=>r.pf===n);
-    const a=agg(rows);
-    const camps=new Set(D.cp.filter(r=>r.pf===n).map(r=>r.camp)).size||new Set(rows.map(r=>r.camp)).size;
+    /* 캠페인 리포트 기준 — 개요 KPI 와 같은 총액이어야 한다.
+       단 NTB 매출은 캠페인 리포트에 비어 있어 서치텀 기준으로 따로 계산한다. */
+    const rows=D.cp.filter(r=>r.pf===n);
+    const a=agg(rows), aSt=agg(D.st.filter(r=>r.pf===n));
+    const camps=new Set(rows.map(r=>r.camp)).size;
     const target=pfAcos(n);
     const over=a.acos!=null&&a.acos!==Infinity&&a.acos>target;
     const tot=a.cost+a.sales||1;
     const c=pfColor(n);
     return `<div class="pf-card" style="--pfc:${c}">
       <h3>${esc(n)}</h3>
-      <div class="pf-meta">캠페인 ${camps}개 · NTB ${pct(a.ntbShare,0)}</div>
+      <div class="pf-meta" title="NTB 비중은 서치텀 리포트 기준 — 캠페인 리포트에는 NTB 매출이 비어 있습니다">캠페인 ${camps}개 · NTB ${pct(aSt.ntbShare,0)}</div>
       <div class="pf-nums">
         <div><span>지출</span><b>${money0(a.cost)}</b></div>
         <div><span>매출</span><b>${money0(a.sales)}</b></div>
@@ -575,7 +581,7 @@ function renderPortfolio(){
       </div></div>`;
   }).join('');
   view.innerHTML=`
-    <div class="page-head"><div><h1>포트폴리오</h1><p>아마존 광고 콘솔의 포트폴리오를 자동 인식했습니다. 카드에서 제품별 목표 ACOS를 설정하세요.</p></div></div>
+    <div class="page-head"><div><h1>포트폴리오</h1><p>아마존 광고 콘솔의 포트폴리오를 자동 인식했습니다. 카드에서 제품별 목표 ACOS를 설정하세요. <span class="dim">· 캠페인 리포트(총액) 기준</span></p></div></div>
     <div class="pf-grid">${cards}</div>`;
 }
 function editPfTarget(n){
