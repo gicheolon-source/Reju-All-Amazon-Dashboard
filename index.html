@@ -106,6 +106,7 @@ a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--inf
 .chip.neg{background:var(--bad-soft);color:var(--bad)}
 .chip.harvest{background:var(--info-soft);color:var(--info)}
 .chip.watch{background:#F0EEE8;color:var(--muted)}
+.chip.ok{background:var(--info-soft);color:var(--info)}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .mt{background:#F0EEE8;color:var(--ink2);padding:1px 7px;border-radius:4px;font-size:10.5px;font-family:var(--mono)}
 .mt.pt{background:#E3EBF4;color:#31597F}
@@ -181,7 +182,8 @@ const LS_KEY='amzAdsLab.v4.rejuall';
 let D={st:[],tg:[],cp:[],ap:[],period:'',account:'',prev:null,combo:null,isEvent:false,notes:[]};
 let META={account:'',weeks:[]};   // /api/weeks 응답
 let S={ pfCfg:{}, asinNames:{},
-        settings:{targetAcos:30, negClicks:10, negSpend:10, harvestOrders:3, currency:'$'},
+        /* targetAcos = 이슈 기준(상한), acosLo = 적정 하한. 40~60% 를 적정으로 본다. */
+        settings:{targetAcos:60, acosLo:40, negClicks:10, negSpend:10, harvestOrders:3, currency:'$'},
         topF:{waste:'', win:'clk10'},   // 개요 낭비/효율 TOP 최소 기준
         /* 실제 데이터에 등장한 표기로 초기값을 잡았다. 데이터·설정 탭에서 편집한다.
            경쟁사가 먼저 매칭되므로 rejuran 은 자사 패턴 'dr reju' 보다 우선한다. */
@@ -190,7 +192,15 @@ let S={ pfCfg:{}, asinNames:{},
         sel:{from:'',to:''} };    // 캘린더에서 고른 주차 범위
 const PALETTE=['#E8850C','#3A6EA5','#1B8A5A','#8A5CB8','#D64545','#4A7B8C','#B7791F','#5B8A3C','#A0527D','#556B8A','#7A6A4F'];
 function save(){ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} }
-function load(){ try{const d=localStorage.getItem(LS_KEY); if(d){const p=JSON.parse(d); S={...S,...p, settings:{...S.settings,...(p.settings||{})}, topF:{...S.topF,...(p.topF||{})}, brands:{own:p.brands?.own??S.brands.own, comp:p.brands?.comp??S.brands.comp}, pfCfg:{...(p.pfCfg||{})}, asinNames:p.asinNames||{}};}}catch(e){} }
+function load(){ try{const d=localStorage.getItem(LS_KEY); if(d){const p=JSON.parse(d); S={...S,...p, settings:{...S.settings,...(p.settings||{})}, topF:{...S.topF,...(p.topF||{})}, brands:{own:p.brands?.own??S.brands.own, comp:p.brands?.comp??S.brands.comp}, pfCfg:{...(p.pfCfg||{})}, asinNames:p.asinNames||{}};
+    /* ACOS 단일 목표(기본 30%) → 밴드(40~60%) 전환. 예전 값이 남아 있으면 올려준다. */
+    if(!(p.settings&&'acosLo' in p.settings)){
+      S.settings.acosLo=40;
+      if(!p.settings||p.settings.targetAcos==null||p.settings.targetAcos===30)S.settings.targetAcos=60;
+      for(const k in S.pfCfg) if(S.pfCfg[k]?.targetAcos===30)S.pfCfg[k]={...S.pfCfg[k],targetAcos:60};
+      save();
+    }
+  }}catch(e){} }
 const fmt=(n,d=0)=>n==null||isNaN(n)?'–':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const money=n=>S.settings.currency+fmt(n,2);
 const money0=n=>S.settings.currency+fmt(n,0);
@@ -461,15 +471,23 @@ function groupBy(rows,keyFn){
   for(const r of rows){const k=keyFn(r); if(!m.has(k))m.set(k,[]); m.get(k).push(r);}
   return m;
 }
-function verdict(a,target){
-  const st=S.settings;
+/* ACOS 를 단일 목표치가 아니라 밴드로 본다.
+   적정 하한(acosLo) 아래 = 더 밀어야 할 구간, 하한~상한 = 적정, 상한(hi) 초과 = 이슈.
+   단일 목표치 × 1.3 방식은 적정 구간을 전부 '입찰 인하' 로 찍어버린다. */
+function verdict(a,hi){
+  const st=S.settings, lo=st.acosLo;
   if(a.pur===0 && (a.clk>=st.negClicks || a.cost>=st.negSpend)) return {k:'neg',label:'제외 후보'};
-  if(a.pur>=st.harvestOrders && a.acos!=null && a.acos<=target) return {k:'harvest',label:'수확·이관'};
-  if(a.pur>=2 && a.acos!=null && a.acos<=target*0.8) return {k:'scale',label:'스케일업'};
-  if(a.pur>0 && a.acos!=null && a.acos>target*1.3) return {k:'warn',label:'입찰 인하'};
-  return {k:'watch',label:'관찰'};
+  if(a.pur===0 || a.acos==null) return {k:'watch',label:'관찰'};
+  if(a.acos>hi) return {k:'warn',label:'입찰 인하'};
+  if(a.acos<=lo && a.pur>=st.harvestOrders) return {k:'harvest',label:'수확·이관'};
+  if(a.acos<=lo && a.pur>=2) return {k:'scale',label:'스케일업'};
+  return {k:'ok',label:'적정'};
 }
-const acosCell=(a,target)=>`<td class="${a.acos!=null&&a.acos!==Infinity&&a.acos<=target?'num-good':(a.pur===0&&a.cost>0)||(a.acos!=null&&a.acos!==Infinity&&a.acos>target*1.3)?'num-bad':''}">${a.acos==null?'–':a.acos===Infinity?'∞':pct(a.acos)}</td>`;
+const acosCell=(a,hi)=>{
+  const lo=S.settings.acosLo, v=a.acos;
+  const cls = v==null ? '' : v===Infinity||v>hi ? 'num-bad' : v<=lo ? 'num-good' : '';
+  return `<td class="${cls}">${v==null?'–':v===Infinity?'∞':pct(v)}</td>`;
+};
 /* 개요 낭비/효율 TOP 의 최소 기준 필터.
    효율 TOP 은 클릭 1~2회짜리가 ACOS 0.3% 로 1등을 차지해 재현 불가능한
    우연이 상단을 덮으므로 기본값을 클릭 10회 이상으로 둔다. */
@@ -564,14 +582,14 @@ function renderOverview(){
      검색어 단위 분석(판정 요약·낭비/효율 TOP)에만 쓴다. */
   const a=agg(cp), aSt=agg(st);
   const target=ovPf?pfAcos(ovPf):S.settings.targetAcos;
-  const acosCls=a.acos==null?'':(a.acos<=target?'good':'bad');
+  const acosCls=a.acos==null?'':(a.acos>target?'bad':a.acos<=S.settings.acosLo?'good':'');   // 적정 구간은 색 없음
   // comparison
   let cmpSnap=ovCmp==='auto'?cmpAuto():(ovCmp!=='none'?cmpData:null);
   if(cmpSnap&&cmpSnap.id&&selWeeks().includes(cmpSnap.id))cmpSnap=null;
   const b=cmpSnap?agg(byPf(cmpSnap.cp||[],ovPf)):null;
   const sub=(cur,prev,inv)=>b?`<div class="k-sub">${deltaHtml(cur,prev,inv)} <span class="dim">vs ${esc(cmpSnap.label.split('–')[0].trim())}~</span></div>`:'';
   const terms=[...groupBy(st.filter(r=>r.term),r=>r.term).values()].map(rs=>{const ag=agg(rs);return {a:ag,v:verdict(ag,target)};});
-  const vc={neg:0,scale:0,harvest:0,warn:0,watch:0}; terms.forEach(x=>vc[x.v.k]++);
+  const vc={neg:0,scale:0,harvest:0,warn:0,ok:0,watch:0}; terms.forEach(x=>vc[x.v.k]++);
   const negCost=terms.filter(x=>x.v.k==='neg').reduce((s,x)=>s+x.a.cost,0);
   const prodSum=[...groupBy(cp,r=>r.prod).entries()].map(([p,rs])=>({p,a:agg(rs)})).sort((x,y)=>y.a.cost-x.a.cost);
   const prodTot=prodSum.reduce((s,x)=>s+x.a.cost,0)||1;
@@ -603,7 +621,7 @@ function renderOverview(){
     <div class="kpi-grid">
       <div class="kpi"><div class="k-label">지출</div><div class="k-val">${money0(a.cost)}</div>${sub(a.cost,b?.cost,true)}</div>
       <div class="kpi"><div class="k-label">광고 매출</div><div class="k-val">${money0(a.sales)}</div>${b?sub(a.sales,b.sales,false):`<div class="k-sub" title="NTB 매출은 캠페인 리포트에 비어 있어 서치텀 리포트 기준으로 계산합니다">NTB 비중 ${pct(aSt.ntbShare)} <span class="dim">(서치텀)</span></div>`}</div>
-      <div class="kpi"><div class="k-label">ACOS</div><div class="k-val ${acosCls}">${a.acos===Infinity?'∞':pct(a.acos)}</div><div class="k-sub">${b?acosDelta(a.acos,b.acos):'목표 '+pct(target,0)}</div></div>
+      <div class="kpi"><div class="k-label">ACOS</div><div class="k-val ${acosCls}">${a.acos===Infinity?'∞':pct(a.acos)}</div><div class="k-sub">${b?acosDelta(a.acos,b.acos):'적정 '+fmt(S.settings.acosLo)+'~'+fmt(target)+'%'}</div></div>
       <div class="kpi"><div class="k-label">ROAS</div><div class="k-val">${a.roas==null?'–':fmt(a.roas,2)}</div>${sub(a.roas,b?.roas,false)}</div>
       <div class="kpi"><div class="k-label">구매</div><div class="k-val">${fmt(a.pur)}</div>${b?sub(a.pur,b.pur,false):`<div class="k-sub">CVR ${pct(a.cvr)}</div>`}</div>
       <div class="kpi"><div class="k-label">클릭</div><div class="k-val">${fmt(a.clk)}</div>${b?sub(a.clk,b.clk,false):`<div class="k-sub">CTR ${pct(a.ctr,2)} · CPC ${money(a.cpc||0)}</div>`}</div>
@@ -618,6 +636,7 @@ function renderOverview(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             <span class="chip neg">제외 후보 ${vc.neg}</span><span class="chip harvest">수확·이관 ${vc.harvest}</span>
             <span class="chip scale">스케일업 ${vc.scale}</span><span class="chip warn">입찰 인하 ${vc.warn}</span>
+            <span class="chip ok">적정 ${vc.ok}</span>
             <span class="chip watch">관찰 ${vc.watch}</span></div>
           <div class="hint">주문 없이 소진된 지출(제외 후보 합계): <b style="color:var(--bad)">${money(negCost)}</b> — 전체 지출의 ${pct(negCost/(a.cost||1)*100)}</div>
         </div></div>
@@ -660,7 +679,7 @@ function renderPortfolio(){
     const a=agg(rows), aSt=agg(D.st.filter(r=>r.pf===n));
     const camps=new Set(rows.map(r=>r.camp)).size;
     const target=pfAcos(n);
-    const over=a.acos!=null&&a.acos!==Infinity&&a.acos>target;
+    const over=a.acos!=null&&(a.acos===Infinity||a.acos>target);   // 매출 0(∞) 도 이슈다
     const tot=a.cost+a.sales||1;
     const c=pfColor(n);
     return `<div class="pf-card" style="--pfc:${c}">
@@ -673,26 +692,26 @@ function renderPortfolio(){
         <div><span>ROAS</span><b>${a.roas==null?'–':fmt(a.roas,2)}</b></div>
       </div>
       <div class="bar-duo"><i style="width:${a.cost/tot*100}%;background:${c}"></i><i style="width:${a.sales/tot*100}%;background:${c}55"></i></div>
-      <div class="acos-line"><span>ACOS <b class="${over?'num-bad':'num-good'}">${a.acos==null?'–':a.acos===Infinity?'∞':pct(a.acos)}</b> / 목표 ${pct(target,0)}</span><span>${over?'목표 초과 ▲':'목표 이내'}</span></div>
+      <div class="acos-line"><span>ACOS <b class="${over?'num-bad':(a.acos!=null&&a.acos<=S.settings.acosLo?'num-good':'')}">${a.acos==null?'–':a.acos===Infinity?'∞':pct(a.acos)}</b> / 적정 ${fmt(S.settings.acosLo)}~${fmt(target)}%</span><span>${over?'이슈 ▲':(a.acos!=null&&a.acos<=S.settings.acosLo?'확대 여력':'적정')}</span></div>
       <div class="pf-actions">
-        <button class="btn sm" onclick="editPfTarget('${esc(n)}')">목표 ACOS ✎</button>
+        <button class="btn sm" onclick="editPfTarget('${esc(n)}')">이슈 기준 ✎</button>
         <button class="btn sm" onclick="location.hash='#/terms?pf='+encodeURIComponent('${esc(n)}')">서치텀</button>
         <button class="btn sm" onclick="location.hash='#/targeting?pf='+encodeURIComponent('${esc(n)}')">타겟팅</button>
         <button class="btn sm" onclick="location.hash='#/campaigns?pf='+encodeURIComponent('${esc(n)}')">캠페인</button>
       </div></div>`;
   }).join('');
   view.innerHTML=`
-    <div class="page-head"><div><h1>포트폴리오</h1><p>아마존 광고 콘솔의 포트폴리오를 자동 인식했습니다. 카드에서 제품별 목표 ACOS를 설정하세요. <span class="dim">· 캠페인 리포트(총액) 기준</span></p></div></div>
+    <div class="page-head"><div><h1>포트폴리오</h1><p>아마존 광고 콘솔의 포트폴리오를 자동 인식했습니다. 카드에서 제품별 이슈 기준 ACOS를 설정하세요. <span class="dim">· 캠페인 리포트(총액) 기준</span></p></div></div>
     <div class="pf-grid">${cards}</div>`;
 }
 function editPfTarget(n){
   const cur=pfAcos(n);
-  const v=prompt(`"${n}" 목표 ACOS (%)`,cur);
+  const v=prompt(`"${n}" 이슈 기준 ACOS (%) — 이 값을 넘으면 입찰 인하 판정`,cur);
   if(v==null)return;
   const num=parseFloat(v);
   if(isNaN(num)||num<=0){toast('숫자를 입력해주세요');return;}
   S.pfCfg[n]={...(S.pfCfg[n]||{}),targetAcos:num};
-  save();route();toast(`${n} 목표 ACOS → ${num}%`);
+  save();route();toast(`${n} 이슈 기준 ACOS → ${num}%`);
 }
 
 /* ═══════════════ Campaigns ═══════════════ */
@@ -867,6 +886,7 @@ function renderTerms(){
         <option value="harvest" ${tState.verdict==='harvest'?'selected':''}>수확·이관</option>
         <option value="scale" ${tState.verdict==='scale'?'selected':''}>스케일업</option>
         <option value="warn" ${tState.verdict==='warn'?'selected':''}>입찰 인하</option>
+        <option value="ok" ${tState.verdict==='ok'?'selected':''}>적정</option>
         <option value="watch" ${tState.verdict==='watch'?'selected':''}>관찰</option></select>
       <span class="dim" style="margin-left:auto">${fmt(list.length)}개 · 클릭 ${fmt(sumClk)} · 지출 ${money(sumCost)}</span></div>
     <div class="tbl-wrap" style="max-height:680px;overflow-y:auto"><table><thead><tr>
@@ -1000,16 +1020,20 @@ function renderData(){
     </div></div>
     <div class="card"><div class="card-head"><h2>판정 기준 설정</h2></div><div class="card-body">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-        <div><label class="hint"><b>기본 목표 ACOS (%)</b></label><input class="inp" type="number" style="width:100%" value="${st.targetAcos}" onchange="S.settings.targetAcos=parseFloat(this.value)||30;save()"></div>
+        <div><label class="hint"><b>적정 하한 ACOS (%)</b> 이 아래면 확대</label><input class="inp" type="number" style="width:100%" value="${st.acosLo}" onchange="S.settings.acosLo=parseFloat(this.value)||40;save();route()"></div>
+        <div><label class="hint"><b>이슈 기준 ACOS (%)</b> 이 위면 입찰 인하</label><input class="inp" type="number" style="width:100%" value="${st.targetAcos}" onchange="S.settings.targetAcos=parseFloat(this.value)||60;save();route()"></div>
         <div><label class="hint"><b>제외 후보: 최소 클릭</b> (구매 0)</label><input class="inp" type="number" style="width:100%" value="${st.negClicks}" onchange="S.settings.negClicks=parseFloat(this.value)||10;save()"></div>
         <div><label class="hint"><b>제외 후보: 최소 지출 ($)</b> (구매 0)</label><input class="inp" type="number" style="width:100%" value="${st.negSpend}" onchange="S.settings.negSpend=parseFloat(this.value)||10;save()"></div>
         <div><label class="hint"><b>수확 기준: 최소 구매</b></label><input class="inp" type="number" style="width:100%" value="${st.harvestOrders}" onchange="S.settings.harvestOrders=parseFloat(this.value)||3;save()"></div>
       </div>
-      <div class="hint" style="margin-top:14px">
-        <span class="chip neg">제외 후보</span> 구매 0 & (클릭≥${st.negClicks} 또는 지출≥$${st.negSpend}) ·
-        <span class="chip harvest">수확·이관</span> 구매≥${st.harvestOrders} & ACOS≤목표 ·
-        <span class="chip scale">스케일업</span> 구매≥2 & ACOS≤목표×0.8 ·
-        <span class="chip warn">입찰 인하</span> ACOS>목표×1.3 — 포트폴리오별 목표는 포트폴리오 탭에서 설정
+      <div class="hint" style="margin-top:14px;line-height:2">
+        <b>적정 구간 ${fmt(st.acosLo)}% ~ ${fmt(st.targetAcos)}%</b> — 이 안에 있으면 조치 불필요<br>
+        <span class="chip neg">제외 후보</span> 구매 0 &amp; (클릭≥${st.negClicks} 또는 지출≥$${st.negSpend}) ·
+        <span class="chip harvest">수확·이관</span> ACOS≤${fmt(st.acosLo)}% &amp; 구매≥${st.harvestOrders} ·
+        <span class="chip scale">스케일업</span> ACOS≤${fmt(st.acosLo)}% &amp; 구매 2~${fmt(st.harvestOrders-1)} ·
+        <span class="chip ok">적정</span> ${fmt(st.acosLo)}~${fmt(st.targetAcos)}% ·
+        <span class="chip warn">입찰 인하</span> ACOS>${fmt(st.targetAcos)}%<br>
+        <span class="dim">포트폴리오별 이슈 기준은 포트폴리오 탭에서 따로 설정합니다. 적정 하한은 전체 공통입니다.</span>
       </div>
     </div></div>`;
 }
