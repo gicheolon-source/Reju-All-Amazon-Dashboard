@@ -312,7 +312,10 @@ function toggleCal(ev){
   document.getElementById('calPop').hidden=!calOpen;
   if(calOpen){ calMonth=(SEL.to||weekIds().slice(-1)[0]||'').slice(0,7); renderCal(); }
 }
-document.addEventListener('click',e=>{
+/* click 이 아니라 mousedown 으로 판정한다 — renderCal() 이 팝업 내부를 다시 그리면
+   클릭된 요소가 DOM 에서 떨어져 나가고, click 이 document 까지 올라올 때는
+   closest('.cal-wrap') 가 null 이 되어 내부 클릭이 외부로 오판된다. */
+document.addEventListener('mousedown',e=>{
   if(!calOpen || e.target.closest('.cal-wrap'))return;
   calOpen=false;
   document.getElementById('calPop').hidden=true;
