@@ -69,6 +69,11 @@ tr:hover td{background:#FBFAF6}
 .num-good{color:var(--good);font-weight:600}
 .num-bad{color:var(--bad);font-weight:600}
 .term{font-weight:500}
+/* 긴 검색어·타겟·캠페인명이 열 폭을 밀어내 지표를 화면 밖으로 내보내므로 잘라낸다.
+   전문은 title 로 남기고, CSV 내보내기는 원문 그대로 나간다. */
+.trunc{display:inline-block;max-width:36ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.trunc.sm{max-width:28ch}
+@media (max-width:900px){.trunc{max-width:22ch}.trunc.sm{max-width:18ch}}
 .dim{color:var(--muted);font-size:11px}
 a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--info)}
 .chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;font-family:'IBM Plex Sans KR';line-height:1.6}
@@ -373,7 +378,7 @@ function renderOverview(){
   const tlist=[...groupBy(st.filter(r=>r.term),r=>r.term).entries()].map(([t,rs])=>({t,a:agg(rs)}));
   const waste=tlist.filter(x=>x.a.pur===0).sort((x,y)=>y.a.cost-x.a.cost).slice(0,6);
   const winners=tlist.filter(x=>x.a.pur>0&&x.a.acos!=null).sort((x,y)=>x.a.acos-y.a.acos).filter(x=>x.a.sales>=50).slice(0,6);
-  const li=(x,neg)=>`<tr><td class="l term">${asinOf(x.t)?asinLink(asinOf(x.t)):esc(x.t)}</td><td>${money(x.a.cost)}</td><td>${fmt(x.a.pur)}</td><td>${money(x.a.sales)}</td><td class="${neg?'num-bad':'num-good'}">${x.a.acos==null?'–':x.a.acos===Infinity?'∞':pct(x.a.acos)}</td></tr>`;
+  const li=(x,neg)=>`<tr><td class="l term">${asinOf(x.t)?asinLink(asinOf(x.t)):`<span class="trunc sm" title="${esc(x.t)}">${esc(x.t)}</span>`}</td><td>${money(x.a.cost)}</td><td>${fmt(x.a.pur)}</td><td>${money(x.a.sales)}</td><td class="${neg?'num-bad':'num-good'}">${x.a.acos==null?'–':x.a.acos===Infinity?'∞':pct(x.a.acos)}</td></tr>`;
   const cmpOpts=[`<option value="auto" ${ovCmp==='auto'?'selected':''}>비교: 직전 동일 기간(자동)</option>`,`<option value="none" ${ovCmp==='none'?'selected':''}>비교 안함</option>`]
     .concat(PERIODS.filter(p=>p.id!==S.activeId).map(p=>`<option value="${p.id}" ${ovCmp===p.id?'selected':''}>비교: ${esc(p.label)}</option>`)).join('');
   view.innerHTML=`
@@ -493,7 +498,7 @@ function renderCampaigns(){
       ${th('imp','노출')}${th('clk','클릭')}${th('ctr','CTR')}${th('cost','지출')}${th('cpc','CPC')}${th('pur','구매')}${th('cvr','CVR')}${th('sales','매출')}${th('acos','ACOS')}
     </tr></thead><tbody>
     ${list.map(x=>`<tr>
-      <td class="l"><span class="term">${esc(x.camp)}</span><br><span class="dim">${esc(x.pf)}</span></td>
+      <td class="l"><span class="term trunc" title="${esc(x.camp)}">${esc(x.camp)}</span><br><span class="dim trunc sm" title="${esc(x.pf)}">${esc(x.pf)}</span></td>
       <td class="l"><span class="prod ${x.prod}">${x.prod}</span></td>
       <td>${fmt(x.a.imp)}</td><td>${fmt(x.a.clk)}</td><td>${pct(x.a.ctr,2)}</td>
       <td>${money(x.a.cost)}</td><td>${x.a.cpc==null?'–':money(x.a.cpc)}</td>
@@ -558,8 +563,8 @@ function renderProducts(){
       ${th('imp','노출')}${th('clk','클릭')}${th('ctr','CTR')}${th('cost','지출')}${th('cpc','CPC')}${th('pur','구매')}${th('cvr','CVR')}${th('sales','매출')}${th('acos','ACOS')}
     </tr></thead><tbody>
     ${list.slice(0,400).map(x=>`<tr>
-      <td class="l"><span class="term">${esc(x.name||'(제품명 미지정)')}</span> <button class="btn sm" style="padding:0 6px;font-size:11px" onclick="editAsinName('${x.asin}')">✎</button><br>
-        <span class="dim">${asinLink(x.asin)}${x.pfs.length&&!pState.pf?' · '+esc(x.pfs.join(', ')):''}</span></td>
+      <td class="l"><span class="term trunc" title="${esc(x.name||'')}">${esc(x.name||'(제품명 미지정)')}</span> <button class="btn sm" style="padding:0 6px;font-size:11px" onclick="editAsinName('${x.asin}')">✎</button><br>
+        <span class="dim">${asinLink(x.asin)}${x.pfs.length&&!pState.pf?' · <span class="trunc sm" title="'+esc(x.pfs.join(', '))+'">'+esc(x.pfs.join(', '))+'</span>':''}</span></td>
       <td class="l"><span class="chip ${x.v.k}">${x.v.label}</span></td>
       <td class="l dim">${esc(x.campaigns[0])}${x.campaigns.length>1?` 외 ${x.campaigns.length-1}`:''}</td>
       <td>${fmt(x.a.imp)}</td><td>${fmt(x.a.clk)}</td><td>${pct(x.a.ctr,2)}</td>
@@ -634,7 +639,7 @@ function renderTerms(){
       ${th('imp','노출')}${th('clk','클릭')}${th('ctr','CTR')}${th('cost','지출')}${th('cpc','CPC')}${th('pur','구매')}${th('cvr','CVR')}${th('sales','매출')}${th('acos','ACOS')}${th('dpv','DPV')}
     </tr></thead><tbody>
     ${list.slice(0,500).map(x=>`<tr>
-      <td class="l">${x.asin?asinLink(x.asin):`<span class="term">${esc(x.term)}</span>`}<br><span class="dim">${esc(x.campaigns[0])}${x.campaigns.length>1?` 외 ${x.campaigns.length-1}`:''}</span></td>
+      <td class="l">${x.asin?asinLink(x.asin):`<span class="term trunc" title="${esc(x.term)}">${esc(x.term)}</span>`}<br><span class="dim trunc sm" title="${esc(x.campaigns.join(' | '))}">${esc(x.campaigns[0])}${x.campaigns.length>1?` 외 ${x.campaigns.length-1}`:''}</span></td>
       <td class="l"><span class="chip ${x.v.k}">${x.v.label}</span></td>
       <td>${fmt(x.a.imp)}</td><td>${fmt(x.a.clk)}</td><td>${pct(x.a.ctr,2)}</td>
       <td>${money(x.a.cost)}</td><td>${x.a.cpc==null?'–':money(x.a.cpc)}</td>
@@ -696,7 +701,7 @@ function renderTargeting(){
       ${th('imp','노출')}${th('clk','클릭')}${th('cost','지출')}${th('cpc','CPC')}${th('pur','구매')}${th('sales','매출')}${th('acos','ACOS')}
     </tr></thead><tbody>
     ${grp.slice(0,500).map(x=>`<tr>
-      <td class="l">${x.asin?asinLink(x.asin):`<span class="term">${esc(x.tgt)}</span>`}<br><span class="dim">${esc(x.campaigns[0])}${x.campaigns.length>1?` 외 ${x.campaigns.length-1}`:''}</span></td>
+      <td class="l">${x.asin?asinLink(x.asin):`<span class="term trunc" title="${esc(x.tgt)}">${esc(x.tgt)}</span>`}<br><span class="dim trunc sm" title="${esc(x.campaigns.join(' | '))}">${esc(x.campaigns[0])}${x.campaigns.length>1?` 외 ${x.campaigns.length-1}`:''}</span></td>
       <td class="l">${mtBadge(x.mt)}</td>
       <td class="l"><span class="chip ${x.v.k}">${x.v.label}</span></td>
       <td>${x.bidMin==null?'–':x.bidMin===x.bidMax?money(x.bidMin):money(x.bidMin)+'~'+money(x.bidMax)}</td>

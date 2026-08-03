@@ -45,6 +45,8 @@ createServer(async (req, res) => {
     const buf = await readFile(join(ROOT, file)).catch(() => null);
     if (!buf) { res.statusCode = 404; return res.end('not found: ' + file); }
     res.setHeader('content-type', MIME[extname(file)] ?? 'application/octet-stream');
+    /* 개발 중에는 편집 결과가 바로 보여야 한다 — 브라우저 추측 캐시를 막는다 */
+    res.setHeader('cache-control', 'no-store');
     res.end(buf);
   } catch (e) {
     res.status(500).json({ error: String(e.stack ?? e) });
