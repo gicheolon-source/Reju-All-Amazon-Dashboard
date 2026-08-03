@@ -183,16 +183,52 @@ let META={account:'',weeks:[]};   // /api/weeks 응답
 let S={ pfCfg:{}, asinNames:{},
         settings:{targetAcos:30, negClicks:10, negSpend:10, harvestOrders:3, currency:'$'},
         topF:{waste:'', win:'clk10'},   // 개요 낭비/효율 TOP 최소 기준
+        /* 실제 데이터에 등장한 표기로 초기값을 잡았다. 데이터·설정 탭에서 편집한다.
+           경쟁사가 먼저 매칭되므로 rejuran 은 자사 패턴 'dr reju' 보다 우선한다. */
+        brands:{ own:['rejuall','reju all','reju-all','dr reju','rejuval'],
+                 comp:['rejuran','anua','celimax','medicube','illiyoon','biodance','centellian','sheglam','anasol'] },
         sel:{from:'',to:''} };    // 캘린더에서 고른 주차 범위
 const PALETTE=['#E8850C','#3A6EA5','#1B8A5A','#8A5CB8','#D64545','#4A7B8C','#B7791F','#5B8A3C','#A0527D','#556B8A','#7A6A4F'];
 function save(){ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} }
-function load(){ try{const d=localStorage.getItem(LS_KEY); if(d){const p=JSON.parse(d); S={...S,...p, settings:{...S.settings,...(p.settings||{})}, topF:{...S.topF,...(p.topF||{})}, pfCfg:{...(p.pfCfg||{})}, asinNames:p.asinNames||{}};}}catch(e){} }
+function load(){ try{const d=localStorage.getItem(LS_KEY); if(d){const p=JSON.parse(d); S={...S,...p, settings:{...S.settings,...(p.settings||{})}, topF:{...S.topF,...(p.topF||{})}, brands:{own:p.brands?.own??S.brands.own, comp:p.brands?.comp??S.brands.comp}, pfCfg:{...(p.pfCfg||{})}, asinNames:p.asinNames||{}};}}catch(e){} }
 const fmt=(n,d=0)=>n==null||isNaN(n)?'–':Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const money=n=>S.settings.currency+fmt(n,2);
 const money0=n=>S.settings.currency+fmt(n,0);
 const pct=(n,d=1)=>n==null||!isFinite(n)?'–':fmt(n,d)+'%';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+/* ══════ 검색어 유형 분류 ══════
+   자사 브랜드 표기가 매우 다양하다 (rejuall / reju all / reju-all / dr. reju-all / dr reju).
+   공백·점·하이픈을 지우고 비교해야 한 규칙으로 잡힌다.
+   순서가 중요하다: 경쟁사를 먼저 본다 — 'rejuran'(PDRN 경쟁사)이 자사 패턴 'dr reju' 에
+   걸려 자사로 오분류되는 것을 막는다. */
+const KINDS={ own:{label:'자사 브랜드',c:'#1B8A5A'}, comp:{label:'경쟁사 브랜드',c:'#D64545'},
+              gen:{label:'일반 키워드',c:'#3A6EA5'}, asin:{label:'ASIN 타겟',c:'#8A5CB8'} };
+const KIND_ORDER=['own','comp','gen','asin'];
+const normB=s=>String(s??'').toLowerCase().replace(/[^a-z0-9가-힣]/g,'');
+/* 같은 검색어가 캠페인마다 반복되므로 결과를 캐시한다 (수만 행 × 패턴 수를 피한다) */
+let _kindCache=new Map();
+const clearKindCache=()=>_kindCache=new Map();
+function termKind(t){
+  if(_kindCache.has(t))return _kindCache.get(t);
+  let k;
+  if(asinOf(t)) k='asin';
+  else{
+    const n=normB(t);
+    const hit=list=>(list||[]).some(x=>{const v=normB(x);return v&&n.includes(v);});
+    k = !n ? 'gen' : hit(S.brands?.comp) ? 'comp' : hit(S.brands?.own) ? 'own' : 'gen';
+  }
+  _kindCache.set(t,k);
+  return k;
+}
+/* 유형별로 행을 한 번만 나눈다 */
+function splitKind(rows){
+  const m={};
+  for(const r of rows){ if(!r.term)continue; const k=termKind(r.term); (m[k]??=[]).push(r); }
+  return m;
+}
+const kindChip=k=>`<span class="chip" style="background:${KINDS[k].c}1A;color:${KINDS[k].c}">${KINDS[k].label}</span>`;
+
 const ASIN_RE=/^b0[a-z0-9]{8}$/i;
 const asinOf=s=>{const m=String(s).match(/asin\s*=\s*"?([A-Za-z0-9]{10})"?/i);return m?m[1].toUpperCase():(ASIN_RE.test(String(s).trim())?String(s).trim().toUpperCase():null);};
 const asinLink=a=>`<a class="asin" href="https://www.amazon.com/dp/${a}" target="_blank" rel="noopener">${a}</a>`;
@@ -542,6 +578,13 @@ function renderOverview(){
   const pfRows=pfNames().map(n=>({n,a:agg(D.cp.filter(r=>r.pf===n))})).filter(x=>x.a.cost>0||x.a.sales>0);
   const pfTot=pfRows.reduce((s,x)=>s+x.a.cost,0)||1;
   const tlist=[...groupBy(st.filter(r=>r.term),r=>r.term).entries()].map(([t,rs])=>({t,a:agg(rs)}));
+  /* 검색어 유형별 — 자사 방어 / 경쟁사 공략 / 일반 확보 / ASIN 타겟의 효율을 분리해 본다.
+     전체 평균 ACOS 에 묻히는 구조를 드러내는 게 목적이다. */
+  const kindRows=splitKind(st);
+  const kindSum=KIND_ORDER.filter(k=>kindRows[k]).map(k=>({k,a:agg(kindRows[k]),n:new Set(kindRows[k].map(r=>r.term)).size}))
+    .filter(x=>x.a.cost>0||x.a.sales>0);
+  const kindTot=kindSum.reduce((s,x)=>s+x.a.cost,0)||1;
+
   const fW=S.topF.waste, fWin=S.topF.win;
   const wasteAll=tlist.filter(x=>x.a.pur===0);
   const winAll=tlist.filter(x=>x.a.pur>0&&x.a.acos!=null&&x.a.sales>=50);
@@ -585,6 +628,18 @@ function renderOverview(){
         <td>${money(x.a.cost)}</td><td>${money(x.a.sales)}</td><td>${fmt(x.a.pur)}</td><td>${pct(x.a.cvr)}</td>
         ${acosCell(x.a,pfAcos(x.n))}<td class="dim">${pct(pfAcos(x.n),0)}</td>
         <td><span class="share-bar"><i style="width:${x.a.cost/pfTot*100}%;background:${pfColor(x.n)}"></i></span> <span class="dim">${pct(x.a.cost/pfTot*100,0)}</span></td></tr>`).join('')}
+      </tbody></table></div></div>`:''}
+    ${kindSum.length>1?`<div class="card" style="margin-top:16px"><div class="card-head">
+      <h2>검색어 유형별 성과<span class="sub">서치텀 기준 · 자사 방어 vs 경쟁사 공략 vs 일반 확보</span></h2>
+      <a href="#/data" class="btn sm" style="text-decoration:none">브랜드 키워드 설정 →</a></div>
+      <div class="tbl-wrap"><table><thead><tr><th class="l">유형</th><th>검색어</th><th>클릭</th><th>지출</th><th>구매</th><th>매출</th><th>ACOS</th><th>ROAS</th><th>지출 비중</th></tr></thead><tbody>
+      ${kindSum.map(x=>`<tr>
+        <td class="l">${kindChip(x.k)}</td>
+        <td>${fmt(x.n)}</td><td>${fmt(x.a.clk)}</td><td>${money(x.a.cost)}</td>
+        <td>${fmt(x.a.pur)}</td><td>${money(x.a.sales)}</td>
+        ${acosCell(x.a,target)}
+        <td>${x.a.roas==null?'–':fmt(x.a.roas,2)}</td>
+        <td><span class="share-bar"><i style="width:${x.a.cost/kindTot*100}%;background:${KINDS[x.k].c}"></i></span> <span class="dim">${pct(x.a.cost/kindTot*100,0)}</span></td></tr>`).join('')}
       </tbody></table></div></div>`:''}
     <div class="grid2" style="margin-top:16px">
       <div class="card" style="margin:0"><div class="card-head"><h2>지출 낭비 TOP<span class="sub">구매 0건 · 조건 충족 ${fmt(wastePass.length)}/${fmt(wasteAll.length)}</span></h2>${topSel('waste',fW)}</div>
@@ -757,7 +812,8 @@ function exportProducts(){
 }
 
 /* ═══════════════ Search terms ═══════════════ */
-let tState={pf:'',q:'',verdict:'',type:'',minClk:0,sort:'cost',dir:-1};
+let tState={pf:'',q:'',verdict:'',type:'',kind:'',minClk:0,sort:'cost',dir:-1};
+function setTKind(v){tState.kind=v;renderTerms();}
 function setTPf(v){tState.pf=v;renderTerms();}
 function setTVerdict(v){tState.verdict=v;renderTerms();}
 function setTType(v){tState.type=v;renderTerms();}
@@ -775,6 +831,7 @@ function termData(){
   if(tState.verdict)list=list.filter(x=>x.v.k===tState.verdict);
   if(tState.type==='asin')list=list.filter(x=>x.asin);
   if(tState.type==='kw')list=list.filter(x=>!x.asin);
+  if(tState.kind)list=list.filter(x=>termKind(x.term)===tState.kind);
   list.sort((x,y)=>{
     let a=tState.sort==='term'?x.term:x.a[tState.sort], b=tState.sort==='term'?y.term:y.a[tState.sort];
     if(a==null||a===Infinity)a=tState.sort==='acos'?9e9:-1; if(b==null||b===Infinity)b=tState.sort==='acos'?9e9:-1;
@@ -799,6 +856,10 @@ function renderTerms(){
         <button class="${!tState.type?'on':''}" onclick="setTType('')">전체</button>
         <button class="${tState.type==='kw'?'on':''}" onclick="setTType('kw')">키워드</button>
         <button class="${tState.type==='asin'?'on':''}" onclick="setTType('asin')">ASIN 매치</button></span>
+      <select class="inp" onchange="setTKind(this.value)">
+        <option value="">전체 유형</option>
+        ${KIND_ORDER.map(k=>`<option value="${k}" ${tState.kind===k?'selected':''}>${KINDS[k].label}</option>`).join('')}
+      </select>
       <input class="inp" placeholder="검색어/캠페인 검색" value="${esc(tState.q)}" oninput="tState.q=this.value;clearTimeout(window.__tq);window.__tq=setTimeout(renderTerms,250)" style="width:180px">
       <select class="inp" onchange="setTVerdict(this.value)">
         <option value="">전체 판정</option>
@@ -918,6 +979,25 @@ function renderData(){
     </div></div>
     <div class="card"><div class="card-head"><h2>적재된 주차<span class="sub">${META.weeks.length}개 · ${esc(META.account)}</span></h2></div>
       <div class="card-body" style="padding-top:6px">${wkLines}</div></div>
+    <div class="card"><div class="card-head"><h2>브랜드 키워드<span class="sub">검색어 유형 분류에 쓰입니다</span></h2></div><div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+        <div><label class="hint"><b>자사 브랜드</b> — 표기 변형을 모두 넣어주세요</label>
+          <textarea class="inp" style="width:100%;height:64px;font-family:var(--mono);font-size:12px" onchange="setBrands('own',this.value)">${esc(S.brands.own.join(', '))}</textarea></div>
+        <div><label class="hint"><b>경쟁사 브랜드</b> — 자사보다 먼저 판정됩니다</label>
+          <textarea class="inp" style="width:100%;height:64px;font-family:var(--mono);font-size:12px" onchange="setBrands('comp',this.value)">${esc(S.brands.comp.join(', '))}</textarea></div>
+      </div>
+      <div class="hint" style="margin-top:12px">
+        콤마로 구분합니다. 공백·점·하이픈은 무시하고 비교하므로 <b>rejuall</b> 하나로
+        <span style="font-family:var(--mono)">reju all · reju-all · dr. reju-all</span> 이 모두 잡힙니다.
+        포함 여부로 판정하니 짧은 단어는 오분류를 부릅니다 — <b>reju</b> 를 넣으면 경쟁사 <b>rejuran</b> 까지 자사로 잡힙니다.
+      </div>
+      ${(()=>{const g=splitKind(D.st).gen||[]; if(!g.length)return '';
+        const m=new Map(); for(const r of g)m.set(r.term,(m.get(r.term)||0)+r.cost);
+        const top=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
+        return `<div class="hint" style="margin-top:14px;padding:12px;background:var(--paper);border-radius:6px">
+          <b>일반 키워드 지출 TOP</b> — 이 중 브랜드명이 보이면 위 목록에 추가하세요<br>
+          <span style="font-family:var(--mono);font-size:11px;line-height:1.9">${top.map(([t,c])=>`${esc(String(t).slice(0,32))} <b>${money0(c)}</b>`).join(' · ')}</span></div>`;})()}
+    </div></div>
     <div class="card"><div class="card-head"><h2>판정 기준 설정</h2></div><div class="card-body">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
         <div><label class="hint"><b>기본 목표 ACOS (%)</b></label><input class="inp" type="number" style="width:100%" value="${st.targetAcos}" onchange="S.settings.targetAcos=parseFloat(this.value)||30;save()"></div>
@@ -933,7 +1013,12 @@ function renderData(){
       </div>
     </div></div>`;
 }
-function clearAll(){ if(!confirm('목표 ACOS·판정 기준 설정을 초기화할까요?'))return; localStorage.removeItem(LS_KEY); location.reload(); }
+function setBrands(which,v){
+  S.brands={...S.brands,[which]:v.split(',').map(s=>s.trim()).filter(Boolean)};
+  clearKindCache(); save(); renderData();
+  toast(`${which==='own'?'자사':'경쟁사'} 브랜드 ${S.brands[which].length}개 저장`);
+}
+function clearAll(){ if(!confirm('목표 ACOS·판정 기준·브랜드 키워드를 초기화할까요?'))return; localStorage.removeItem(LS_KEY); location.reload(); }
 function reloadData(){ _cache.clear(); applySel(); toast('서버에서 다시 불러왔습니다'); }
 
 /* ═══════════════ Exports ═══════════════ */
