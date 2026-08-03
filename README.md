@@ -3,8 +3,13 @@
 아마존 광고 콘솔 리포트를 주차 단위로 적재해 **서치텀·타겟팅·캠페인·제품**을 한 화면에서 판정하는 대시보드.
 
 ```
-광고 콘솔 리포트 → Google 시트 → (npm run update) → SQLite/Turso → /api → 대시보드
+광고 콘솔 리포트 ─┬─ CSV 파일 → reports/ → (npm run load)  ─┬→ SQLite/Turso → /api → 대시보드
+                  └─ Google 시트 ────→ (npm run update) ─────┘
 ```
+
+입구가 두 개다. **대용량 리포트(서치텀·타겟팅)는 CSV 직접 적재를 쓴다.**
+구글 시트는 스프레드시트당 셀 1,000만 개 한도가 있어 13열 기준 약 77만 행이 천장이고,
+그 전에 브라우저가 붙여넣기를 버티지 못한다. 캠페인 리포트처럼 작은 건 시트가 편하다.
 
 브라우저는 원본 행을 받지 않는다. 서버가 주차 창(window)을 합산해 사전 압축된 배열만 내려주므로
 8주 합산도 payload 가 220KB 수준이고 localStorage 용량 제한이 없다.
@@ -27,6 +32,7 @@ npm run dev                    # http://localhost:3000
 |---|---|
 | `npm run dev` | 로컬 서버 (정적 + `/api` + 비밀번호 게이트) |
 | `npm run init-db` | `db/schema.sql` 적용 |
+| `npm run load` | **CSV 파일 → DB 직접 적재.** `reports/` 폴더를 읽는다. 경로·`--weeks=` ·`--dry` 지원 |
 | `npm run ingest` | 시트 → DB 적재. `--only=search_terms` `--weeks=2026-07-19` `--dry` 지원 |
 | `npm run verify` | 주차별 커버리지·KPI·경고 리포트 |
 | `npm run update` | ingest + verify |
@@ -61,12 +67,39 @@ npm run dev                    # http://localhost:3000
 
 ## 데이터 소스
 
-| 테이블 | 리포트 | 시트 |
+| 테이블 | 리포트 | 시트 탭 | 권장 입구 |
+|---|---|---|---|
+| `campaigns` | Campaign | `AD 캠페인` | 시트 (작다) |
+| `search_terms` | Search term | `시트2` | **CSV** (크다) |
+| `targets` | Targeting | `6-1 타겟팅` | **CSV** |
+| `products` | Advertised product | 없음 | **CSV** (시트 탭 미연결) |
+
+## CSV 직접 적재
+
+1. 광고 콘솔에서 리포트를 **CSV** 로 내려받는다
+2. `reports/` 폴더에 넣는다 (하위 폴더도 재귀 탐색, 여러 파일 동시 가능)
+3. `npm run load`
+
+리포트 종류는 헤더로 자동 판별한다 (`Search term`/`Customer search term` → 서치텀,
+`Advertised ASIN` → 광고제품, `Targeting` → 타겟팅, `Ad product` → 캠페인).
+콘솔 다운로드본과 시트 붙여넣기본의 열 이름이 달라도(`Spend` vs `Total cost`) 둘 다 인식한다.
+한 파일에 여러 주차가 섞여 있어도 주차별로 나눠 적재한다.
+
+`reports/` 는 gitignore 된다 — 리포트 파일은 커밋되지 않는다.
+
+### 처리량
+
+| 대상 | 속도 | 50,000행 |
 |---|---|---|
-| `campaigns` | Campaign | 메인 시트 `AD 캠페인` |
-| `search_terms` | Search term | 서치텀 시트 `시트2` |
-| `targets` | Targeting | 메인 시트 `6-1 타겟팅` |
-| `products` | Advertised product | **미연결** — 탭 생성 후 `lib/sources.mjs` 의 `products.gid` 를 채우면 제품별 탭이 켜진다 |
+| 로컬 `file:./data/ads.db` | ~34,000 행/초 | 1.5초 |
+| Turso 원격 (한국 → us-east-1) | ~1,500 행/초 | 33초 |
+
+CSV 파싱·집계는 초당 20만 행 이상이라 병목이 아니다. 원격 쓰기가 전부다.
+20만 행이면 약 2분. 5,000행을 넘으면 진행률을 표시한다.
+대량 백필은 주차별 트랜잭션이라 중간에 끊겨도 이미 넣은 주차는 남고, 다시 실행하면 이어진다.
+
+**xlsx 는 지원하지 않는다.** npm 의 SheetJS 등록본에 미수정 취약점이 있고,
+대용량에서는 CSV 가 훨씬 빠르다. 엑셀에서 `다른 이름으로 저장 → CSV UTF-8` 로 변환하면 된다.
 
 ## 판정 기준
 
@@ -84,6 +117,8 @@ npm run dev                    # http://localhost:3000
 ## 구조
 
 ```
+lib/aggregate.mjs   적재 코어 — 시트·CSV 두 입구가 공유한다 (정규화가 갈라지면 안 된다)
+lib/csv.mjs         의존성 없는 스트리밍 CSV 리더 (구분자·BOM·인용 자동 처리)
 index.html          대시보드 (단일 파일, 빌드 없음)
 login.html          비밀번호 입력 화면
 middleware.js       Vercel Edge — 쿠키 없으면 /login 또는 401
@@ -101,9 +136,14 @@ db/schema.sql       테이블 + 인덱스
 
 ## 매주 하는 일
 
-1. 광고 콘솔에서 Campaign / Search term / Targeting 리포트를 뽑아 시트에 append
-2. `npm run update` — 경고가 나오면 원인을 먼저 해결
-3. 행사·딜 주차는 `scripts/set-week.mjs` 로 표시 (WoW 급등 오경보 방지)
+1. 광고 콘솔에서 Campaign / Search term / Targeting 리포트를 뽑는다
+   — **날짜 범위는 일요일~토요일, 단위는 요약(Summary)**. 일별로 뽑으면 조각 기간이라 버려진다
+2. 서치텀·타겟팅 CSV 는 `reports/` 에 넣고 `npm run load`
+   캠페인은 시트에 append 하고 `npm run update`
+3. `npm run verify` 로 경고 확인 — 경고가 나오면 원인을 먼저 해결
+4. 행사·딜 주차는 `scripts/set-week.mjs` 로 표시 (WoW 급등 오경보 방지)
+
+적재하면 배포된 사이트에 **즉시 반영된다** — Vercel 재배포가 필요 없다 (같은 Turso 를 읽는다).
 
 `npm run verify` 경고 읽는 법:
 

@@ -12,3 +12,5 @@ data/*.db-*
 # 스크래치
 _*.mjs
 _*.json
+reports/*
+!reports/.gitkeep

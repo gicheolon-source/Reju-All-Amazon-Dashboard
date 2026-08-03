@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "init-db": "node scripts/init-db.mjs",
+    "load": "node scripts/load.mjs",
     "ingest": "node scripts/ingest.mjs",
     "verify": "node scripts/verify.mjs",
     "update": "node scripts/ingest.mjs && node scripts/verify.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.15.4",
-    "google-auth-library": "^9.14.0"
+    "google-auth-library": "^11.0.0"
   }
 }
