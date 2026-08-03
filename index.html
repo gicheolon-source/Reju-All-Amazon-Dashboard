@@ -35,6 +35,11 @@ nav a:hover{color:#fff}
 .topbar-right{margin-left:auto}
 .data-pill{font-family:var(--mono);font-size:11px;color:#9A96A8;background:rgba(255,255,255,.06);padding:4px 10px;border-radius:20px;white-space:nowrap}
 .data-pill b{color:#FFC978}
+/* 셀렉트 본체는 어두운 상단바용 흰 글자지만, 펼친 목록은 흰 배경에 그려진다.
+   옵션 색을 따로 주지 않으면 흰 글자 + 흰 배경이 되어 읽을 수 없다. */
+#periodSel option{color:var(--ink);background:#fff;font-family:var(--mono)}
+#periodSel option:checked{color:#fff;background:var(--accent)}
+#periodSel option:disabled{color:var(--muted);background:var(--paper)}
 .wrap{max-width:1360px;margin:0 auto;padding:24px 20px 80px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
 .page-head h1{font-size:20px;font-weight:700;letter-spacing:-.3px}
