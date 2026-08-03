@@ -157,14 +157,17 @@ const SUPABASE_URL = "";      // 예: "https://xxxx.supabase.co"
 const SUPABASE_ANON_KEY = ""; // Settings > API > anon public key
 // ▲▲▲ 설정 방법은 함께 제공된 hybrid_setup.md 참고 ▲▲▲
 
-// ▼▼▼ 구글 시트 "웹에 게시" CSV 주소 (비우면 해당 탭은 웹에서 직접 입력) ▼▼▼
+// ▼▼▼ 구글 시트 소스 (비우면 해당 탭은 웹에서 직접 입력) ▼▼▼
+// 서비스 계정으로 읽는 /api/sheet 프록시를 경유한다 — 시트는 비공개로 유지된다.
+// 스프레드시트 ID는 코드가 아니라 Vercel 환경변수 SHEET_ID_US / SHEET_ID_JP 에 둔다.
+// (공개 "웹에 게시" CSV 주소를 직접 넣어도 동작한다 — 그 경우 api/sheet.mjs 는 안 쓰임)
 const SHEET = {
   US: {
-    targets: "",  // '월별 목표' 탭 게시 CSV 주소
-    data:    "",  // 'Data 입력' 탭 게시 CSV 주소
+    targets: "/api/sheet?country=US&tab=targets",
+    data:    "/api/sheet?country=US&tab=data",
   },
   JP: {
-    targets: "",
+    targets: "",  // JP 시트를 만들면 "/api/sheet?country=JP&tab=targets"
     data:    "",
   },
 };

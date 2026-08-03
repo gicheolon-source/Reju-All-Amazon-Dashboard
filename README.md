@@ -23,7 +23,7 @@ DOM을 스텁한 헤드리스 테스트. CSV 파서, 계산 로직(calcRow), 6�
 
 | 입력 위치 | 데이터 | 흐름 |
 |---|---|---|
-| 구글 시트 | 월별 목표 + 월초 확보 개월수, 판매·재고(Data), 제품 목록 | 시트 "웹에 게시" CSV → `sheetLoad()`가 fetch → S.products/S.coverage 덮어씀 (읽기 전용, 최대 5분 캐시) |
+| 구글 시트 | 월별 목표 + 월초 확보 개월수, 판매·재고(Data), 제품 목록 | 시트(비공개) → `/api/sheet` 서비스 계정 프록시가 CSV로 변환 → `sheetLoad()`가 fetch → S.products/S.coverage 덮어씀 (읽기 전용, CDN 30초 캐시) |
 | 웹 | Pipeline(발송 로그), 설정값 | 변경 → `save()` → localStorage + Supabase RPC `save_dashboard` (수정 암호 서버 검증) |
 | 웹 (보기 전용) | Dashboard, 월별 계획 | 계산 결과 표시 |
 
@@ -31,8 +31,22 @@ DOM을 스텁한 헤드리스 테스트. CSV 파서, 계산 로직(calcRow), 6�
 
 ```js
 SUPABASE_URL / SUPABASE_ANON_KEY   // 비우면 로컬 모드 (localStorage만)
-SHEET = { US:{targets, data}, JP:{...} }  // 게시 CSV URL. 비우면 해당 탭이 웹 직접 입력 모드로 폴백
+SHEET = { US:{targets, data}, JP:{...} }  // 기본값은 /api/sheet 프록시 경로.
+                                          // 공개 게시 CSV URL을 직접 넣어도 동작한다.
+                                          // 비우면 해당 탭이 웹 직접 입력 모드로 폴백
 ```
+
+### Vercel 환경변수 (`/api/sheet` 전용)
+
+| 키 | 용도 |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | 이 주소로 시트를 **뷰어 공유**해야 읽힌다 |
+| `GOOGLE_PRIVATE_KEY` | 서비스 계정 비공개 키 (`\n` 이스케이프 형태 허용) |
+| `SHEET_ID_US` / `SHEET_ID_JP` | 스프레드시트 ID (URL의 `/d/` 와 `/edit` 사이) |
+| `SHEET_TAB_TARGETS` / `SHEET_TAB_DATA` | (선택) 탭 이름이 기본값과 다를 때만 |
+
+`api/sheet.mjs`는 **의존성이 없다** — JWT를 `node:crypto`로 직접 서명하므로
+package.json도 빌드 스텝도 생기지 않는다. 이 성질을 깨뜨리지 말 것.
 
 - **로컬 모드**: 편집 자유, 데이터는 브라우저별.
 - **공유 모드**(Supabase 설정 시): 보기는 전원, 수정은 [편집] 버튼 → 암호 → RPC가 서버에서 검증.
@@ -71,6 +85,9 @@ T              = threePL==0 ? max(K, 해상리드+버퍼) : K + threePL월수
 
 ## 시트 CSV 계약 (sheetLoad가 기대하는 형식)
 
+`/api/sheet`는 Sheets API 응답을 이 형식의 CSV로 변환해 돌려준다. 행 끝의 빈 셀은
+Sheets API가 잘라서 주므로 프록시가 최소 11칸(A~K)까지 패딩한다 — 안 하면 targets가 9칸을 못 채운다.
+
 - **targets CSV** ('월별 목표' 탭): 헤더 행은 A열에 '제품명' 포함. 데이터 행 = A 제품명 / B ASIN / C~K 월별 목표(5월~1월).
   A열에 '확보' 포함된 행 = 월초 FBA 확보 개월수 (C~K).
 - **data CSV** ('Data 입력' 탭): A ASIN / C 7일 판매 / D 30일 판매 / E FBA Available / G 3PL 재고.
@@ -86,4 +103,4 @@ T              = threePL==0 ? max(K, 해상리드+버퍼) : K + threePL월수
 
 - [ ] 월 그리드 롤링 구조 (현재 2026.5~2027.1 고정)
 - [ ] 편집 권한 이메일 단위 (현재 공용 암호) — Supabase Auth로 확장
-- [ ] 게시 CSV 공개 노출이 문제 되면 Apps Script 프록시로 전환
+- [x] ~~게시 CSV 공개 노출~~ → `/api/sheet` 서비스 계정 프록시로 해결 (시트 비공개 유지)

@@ -13,31 +13,50 @@
 
 ---
 
-## PART 1. 구글 시트 연동 (5분)
+## PART 1. 구글 시트 연동 — 서비스 계정 방식 (5분)
 
-### 1-1. 탭 2개 "웹에 게시"
+시트를 **비공개로 둔 채** 서버(`/api/sheet`)만 읽게 하는 방식입니다.
+공개 게시(웹에 게시)를 쓰지 않으므로 URL이 새어도 시트가 열리지 않습니다.
 
-1. 구글 시트에서 **파일 → 공유 → 웹에 게시**
-2. "전체 문서" 대신 **'월별 목표' 탭 선택** + 형식 **쉼표로 구분된 값(.csv)** → 게시 → 나온 URL 복사
-3. 같은 방법으로 **'Data 입력' 탭**도 게시 → URL 복사
-   (팁: "게시된 콘텐츠 및 설정"에서 자동 재게시가 켜져 있는지 확인)
+### 1-1. 시트를 서비스 계정에 공유
 
-### 1-2. HTML에 URL 붙여넣기
+1. 스프레드시트 우상단 **공유** 클릭
+2. 서비스 계정 이메일(`...iam.gserviceaccount.com`)을 붙여넣고 **뷰어** 권한으로 추가
+3. "알림 보내기" 체크 해제 → 공유
 
-HTML 파일 상단의 이 부분에:
+### 1-2. Vercel 환경변수 4개
+
+프로젝트 **Settings → Environment Variables**:
+
+| 키 | 값 |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | 위에서 공유한 그 이메일 |
+| `GOOGLE_PRIVATE_KEY` | 서비스 계정 JSON의 `private_key` 값 통째로 |
+| `SHEET_ID_US` | 시트 URL의 `/d/` 와 `/edit` 사이 문자열 |
+| `SHEET_ID_JP` | (일본 시트 만들면) 동일하게 |
+
+탭 이름이 '월별 목표' / 'Data 입력'이 아니라면 `SHEET_TAB_TARGETS`,
+`SHEET_TAB_DATA` 로 덮어쓰면 됩니다. 환경변수만 바꾸고 재배포하면 반영됩니다.
+
+`index.html` 의 `SHEET` 는 이미 프록시 경로로 설정돼 있어 손댈 필요가 없습니다:
 
 ```js
 const SHEET = {
-  US: {
-    targets: "여기에 '월별 목표' 게시 CSV 주소",
-    data:    "여기에 'Data 입력' 게시 CSV 주소",
-  },
-  JP: { targets: "", data: "" },   // 일본 시트 만들면 동일하게
+  US: { targets: "/api/sheet?country=US&tab=targets",
+        data:    "/api/sheet?country=US&tab=data" },
+  JP: { targets: "", data: "" },   // 일본 시트 만들면 country=JP 로
 };
 ```
 
-이러면 웹의 '월별 목표'·'Data' 탭이 자동으로 **보기 전용(시트 연동)**으로 바뀝니다.
-비워두면 예전처럼 웹에서 직접 입력하는 모드로 작동합니다.
+이러면 웹의 '월별 목표'·'Data'·'제품 관리' 탭이 **보기 전용(시트 연동)**으로 바뀝니다.
+비워두면 웹에서 직접 입력하는 모드로 작동합니다.
+
+### 확인 방법
+
+배포 후 `https://<도메인>/api/sheet?country=US&tab=targets` 를 열어 CSV가 나오면 성공입니다.
+- `403` → 1-1 공유를 안 했거나 이메일 오타
+- `404` → `SHEET_ID_US` 또는 탭 이름 오타
+- `missing_service_account_env` → 환경변수 미설정 (Production 스코프인지 확인)
 
 ### 시트 쪽 전제 조건 (지금 시트 구조 그대로면 OK)
 
@@ -47,8 +66,9 @@ const SHEET = {
 
 ### 알아둘 것
 
-- 시트 수정 → 웹 반영까지 **최대 5분** (구글 게시 캐시)
-- 게시 CSV는 URL을 아는 사람은 볼 수 있음 — 민감하면 나중에 Apps Script 프록시로 전환 가능
+- 시트 수정 → 웹 반영까지 **최대 30초** (Vercel CDN 캐시). 급하면 새로고침 두 번.
+- 시트는 비공개 유지 — 서비스 계정만 읽습니다.
+- `GOOGLE_PRIVATE_KEY` 는 절대 코드/저장소에 넣지 말 것. Vercel 환경변수에만.
 
 ---
 
