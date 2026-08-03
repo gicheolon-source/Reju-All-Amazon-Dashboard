@@ -20,8 +20,9 @@ const sa = JSON.parse(readFileSync(keyPath, 'utf8'));
 if (!sa.client_email || !sa.private_key) { console.error('서비스 계정 JSON 형식이 아닙니다: ' + keyPath); process.exit(1); }
 
 const dbUrl = url ?? process.env.TURSO_DATABASE_URL ?? '';
-if (!dbUrl.startsWith('libsql://'))
-  console.warn(`⚠ TURSO_DATABASE_URL 이 libsql:// 가 아닙니다 ("${dbUrl}") — Vercel 에서는 원격 URL 이어야 합니다.`);
+/* Turso 는 libsql:// 와 https:// 를 모두 준다 — 둘 다 유효하다 */
+if (!/^(libsql|https):\/\//.test(dbUrl))
+  console.warn(`⚠ TURSO_DATABASE_URL 이 원격 주소가 아닙니다 ("${dbUrl}") — Vercel 은 로컬 파일을 읽을 수 없습니다.`);
 
 /* 값에 줄바꿈이 있으면 따옴표로 감싸야 Vercel 의 .env 파서가 한 값으로 읽는다 */
 const q = v => `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
