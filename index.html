@@ -116,6 +116,17 @@ a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--inf
 .chip.harvest{background:var(--info-soft);color:var(--info)}
 .chip.watch{background:#F0EEE8;color:var(--muted)}
 .chip.ok{background:var(--info-soft);color:var(--info)}
+/* ── 탭별 제안 ── */
+.adv .card-body{display:flex;flex-direction:column;gap:2px}
+.adv-row{display:flex;gap:9px;align-items:flex-start;padding:7px 0;font-size:12.5px;line-height:1.65;border-bottom:1px solid var(--line)}
+.adv-row:last-child{border-bottom:0}
+.adv-row .dot{font-size:9px;line-height:1.9;flex:none}
+.adv-row.bad .dot{color:var(--bad)}
+.adv-row.warn .dot{color:var(--warn)}
+.adv-row.good .dot{color:var(--good)}
+.adv-row.info .dot{color:var(--muted)}
+.adv-row b{font-weight:600}
+.adv-row .btn.sm{margin-left:4px;vertical-align:baseline}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .mt{background:#F0EEE8;color:var(--ink2);padding:1px 7px;border-radius:4px;font-size:10.5px;font-family:var(--mono)}
 .mt.pt{background:#E3EBF4;color:#31597F}
@@ -241,6 +252,18 @@ function termKind(t){
   _kindCache.set(t,k);
   return k;
 }
+/* 검색어 집계는 여러 탭·제안에서 반복 쓰이므로 한 번만 만들고 캐시한다.
+   기간이 바뀌거나 브랜드 목록이 바뀌면 버린다. */
+let _termsMemo=null;
+const clearTermsMemo=()=>_termsMemo=null;
+function termsAll(){
+  if(_termsMemo)return _termsMemo;
+  const m=new Map();
+  for(const r of D.st){ if(!r.term)continue; let x=m.get(r.term); if(!x)m.set(r.term,x=[]); x.push(r); }
+  _termsMemo=[...m.entries()].map(([t,rows])=>({t,a:agg(rows),kind:termKind(t),pf:rows[0].pf}));
+  return _termsMemo;
+}
+
 /* 유형별로 행을 한 번만 나눈다 */
 function splitKind(rows){
   const m={};
@@ -420,7 +443,7 @@ async function applySel(){
     D.period=selLabel()+(weeks.length>1?` · ${weeks.length}주 합산`:'');
     D.isEvent=cur.isEvent; D.notes=cur.notes; D.weeks=weeks;
     D.prev=prv?{id:'__prev',label:prv.period,st:prv.st,tg:prv.tg,cp:prv.cp,ap:prv.ap}:null;
-    cmpData=null;
+    cmpData=null; clearTermsMemo();
     pfNames().forEach(n=>{ if(!S.pfCfg[n])S.pfCfg[n]={targetAcos:S.settings.targetAcos}; });
     save();
   }catch(e){ if(my===selSeq)fail(e); return; }
@@ -522,6 +545,125 @@ function setTopFilter(which,k){ S.topF={...S.topF,[which]:k}; save(); renderOver
 
 const CLK_OPTS=[0,5,10,20,50];
 const clkSelect=(cur,fn)=>`<select class="inp" onchange="${fn}(parseInt(this.value))" title="최소 클릭 필터">${CLK_OPTS.map(v=>`<option value="${v}" ${cur===v?'selected':''}>${v===0?'클릭 전체':'클릭 ≥ '+v}</option>`).join('')}</select>`;
+
+/* ══════════ 탭별 제안 ══════════
+   현재 선택 기간의 데이터를 읽어 "지금 무엇을 할지" 를 수치와 함께 보여준다.
+   판단 기준은 설정의 적정 밴드(acosLo ~ targetAcos)를 따른다. */
+function goTab(tab,patch){
+  const st={campaigns:cState,terms:tState,targeting:gState,products:pState}[tab];
+  if(st&&patch)Object.assign(st,patch);
+  if(location.hash==='#/'+tab) route(); else location.hash='#/'+tab;
+}
+const advBtn=(label,js)=>` <button class="btn sm" onclick="${js}">${label}</button>`;
+
+function adviceRows(tab){
+  const hi=S.settings.targetAcos, lo=S.settings.acosLo, st=S.settings;
+  const R=[];
+  const add=(level,html)=>R.push({level,html});
+  const sumC=arr=>arr.reduce((s,x)=>s+x.a.cost,0);
+  const money0s=n=>money0(n);
+
+  /* 기간 자체에 대한 주의 — 분석 탭에만 (데이터·설정 탭은 기간과 무관) */
+  if(tab!=='data' && (D.weeks||[]).length>1 && D.isEvent){
+    const ev=(D.weeks||[]).filter(id=>META.weeks.find(w=>w.id===id)?.isEvent)
+      .map(id=>esc(META.weeks.find(w=>w.id===id).label));
+    add('warn',`선택 기간에 행사주 <b>${ev.join(', ')}</b>가 포함돼 평균이 위로 당겨집니다. 평상시 효율은 그 주를 빼고 보세요.`);
+  }
+
+  if(tab==='overview'||tab==='terms'){
+    const T=termsAll();
+    const issue=T.filter(x=>x.a.acos!=null&&(x.a.acos===Infinity||x.a.acos>hi)&&x.a.pur>0);
+    const neg=T.filter(x=>x.a.pur===0&&(x.a.clk>=st.negClicks||x.a.cost>=st.negSpend));
+    const room=T.filter(x=>x.a.acos!=null&&x.a.acos<=lo&&x.a.pur>=2);
+    const stTot=sumC(T)||1;
+    if(neg.length) add('bad',`<b>제외 후보 ${fmt(neg.length)}개</b>에 ${money0s(sumC(neg))} — 구매 0인데 클릭 ${st.negClicks}회 또는 지출 $${st.negSpend} 이상. 부정 키워드로 막으면 바로 절감됩니다.`
+      +advBtn('목록 보기',`goTab('terms',{verdict:'neg',kind:'',q:''})`)+advBtn('CSV','exportNegatives()'));
+    if(issue.length) add('bad',`ACOS ${fmt(hi)}% 초과 검색어 <b>${fmt(issue.length)}개</b>에 ${money0s(sumC(issue))} (서치텀 지출의 ${pct(sumC(issue)/stTot*100,0)}) — 입찰 인하 대상입니다.`
+      +advBtn('목록 보기',`goTab('terms',{verdict:'warn',kind:'',q:''})`));
+    if(room.length) add('good',`ACOS ${fmt(lo)}% 이하 검색어 <b>${fmt(room.length)}개</b>가 ${money0s(sumC(room))}로 ${money0s(room.reduce((s,x)=>s+x.a.sales,0))} 만들고 있습니다 — 입찰·예산 확대 여력.`
+      +advBtn('목록 보기',`goTab('terms',{verdict:'harvest',kind:'',q:''})`));
+    /* 유형별 이슈 */
+    for(const k of KIND_ORDER){
+      const rows=T.filter(x=>x.kind===k);
+      if(!rows.length)continue;
+      const cost=sumC(rows), sales=rows.reduce((s,x)=>s+x.a.sales,0);
+      const acos=sales?cost/sales*100:null;
+      if(acos!=null&&acos>hi&&cost>=100)
+        add('warn',`<b>${KINDS[k].label}</b> 전체 ACOS ${pct(acos)} — 이슈 기준 ${fmt(hi)}% 초과. 지출 ${money0s(cost)}.`
+          +advBtn('이 유형만 보기',`goTab('terms',{kind:'${k}',verdict:'',q:''})`));
+    }
+  }
+
+  if(tab==='campaigns'){
+    const g=[...groupBy(D.cp,r=>r.camp).entries()].map(([camp,rs])=>({camp,pf:rs[0].pf,a:agg(rs)}));
+    const tot=sumC(g)||1;
+    const issue=g.filter(x=>x.a.pur>0&&x.a.acos!=null&&(x.a.acos===Infinity||x.a.acos>hi)).sort((x,y)=>y.a.cost-x.a.cost);
+    const zero=g.filter(x=>x.a.pur===0&&x.a.cost>=st.negSpend).sort((x,y)=>y.a.cost-x.a.cost);
+    const room=g.filter(x=>x.a.acos!=null&&x.a.acos<=lo&&x.a.pur>=2).sort((x,y)=>y.a.cost-x.a.cost);
+    if(issue.length) add('bad',`ACOS ${fmt(hi)}% 초과 캠페인 <b>${issue.length}개</b>에 ${money0s(sumC(issue))} — 상위: ${issue.slice(0,3).map(x=>`${esc(x.camp)} (${pct(x.a.acos)})`).join(', ')}`);
+    if(zero.length) add('bad',`구매 0인데 $${st.negSpend} 이상 쓴 캠페인 <b>${zero.length}개</b> · ${money0s(sumC(zero))} — ${zero.slice(0,3).map(x=>esc(x.camp)).join(', ')}`);
+    if(room.length) add('good',`ACOS ${fmt(lo)}% 이하 캠페인 <b>${room.length}개</b> · ${money0s(sumC(room))} — 예산 상향 후보: ${room.slice(0,3).map(x=>`${esc(x.camp)} (${pct(x.a.acos)})`).join(', ')}`);
+    const top=g.slice().sort((x,y)=>y.a.cost-x.a.cost)[0];
+    if(top&&top.a.cost/tot>0.15) add('warn',`<b>${esc(top.camp)}</b> 한 캠페인이 전체 지출의 ${pct(top.a.cost/tot*100,0)}(${money0s(top.a.cost)})를 차지합니다 — 집중도가 높으니 성과 변동 영향이 큽니다.`);
+  }
+
+  if(tab==='portfolio'){
+    const names=pfNames();
+    const rows=names.map(n=>({n,a:agg(D.cp.filter(r=>r.pf===n))})).filter(x=>x.a.cost>0);
+    const issue=rows.filter(x=>x.a.acos!=null&&(x.a.acos===Infinity||x.a.acos>pfAcos(x.n)));
+    const room=rows.filter(x=>x.a.acos!=null&&x.a.acos<=lo);
+    if(issue.length) add('bad',`이슈 기준 초과 포트폴리오 <b>${issue.length}개</b>: ${issue.map(x=>`${esc(x.n)} ${pct(x.a.acos)}`).join(', ')}`);
+    if(room.length) add('good',`확대 여력 <b>${room.length}개</b>: ${room.map(x=>`${esc(x.n)} ${pct(x.a.acos)}`).join(', ')} — ACOS ${fmt(lo)}% 이하입니다.`);
+    if(!issue.length&&!room.length) add('info',`모든 포트폴리오가 적정 구간(${fmt(lo)}~${fmt(hi)}%) 안에 있습니다.`);
+  }
+
+  if(tab==='targeting'){
+    const miss=(D.weeks||[]).filter(id=>!(META.weeks.find(w=>w.id===id)?.counts.tg));
+    if(miss.length) add('bad',`선택한 ${(D.weeks||[]).length}주 중 <b>${miss.length}주</b>에 타겟팅 리포트가 없습니다 — 입찰 판단이 남은 주차에만 근거합니다. CSV를 <b>reports/</b> 에 넣고 <b>npm run load</b> 를 실행하세요.`);
+    if(D.tg.length){
+      const g=[...groupBy(D.tg,r=>r.tgt+'│'+r.mt).entries()].map(([k,rs])=>({t:rs[0].tgt,mt:rs[0].mt,a:agg(rs)}));
+      const issue=g.filter(x=>x.a.pur>0&&x.a.acos!=null&&(x.a.acos===Infinity||x.a.acos>hi)).sort((x,y)=>y.a.cost-x.a.cost);
+      const zero=g.filter(x=>x.a.pur===0&&(x.a.clk>=st.negClicks||x.a.cost>=st.negSpend)).sort((x,y)=>y.a.cost-x.a.cost);
+      const noBid=D.tg.filter(r=>r.bid==null).length;
+      if(issue.length) add('bad',`ACOS ${fmt(hi)}% 초과 타겟 <b>${issue.length}개</b> · ${money0s(sumC(issue))} — 상위: ${issue.slice(0,3).map(x=>`${esc(String(x.t).slice(0,24))} (${pct(x.a.acos)})`).join(', ')}`);
+      if(zero.length) add('warn',`구매 0인 타겟 <b>${zero.length}개</b> · ${money0s(sumC(zero))} — 입찰 인하 또는 중지 검토.`);
+      if(noBid) add('info',`입찰가가 비어 있는 행 ${fmt(noBid)}개 — 자동 타겟팅이거나 리포트에 입찰 열이 없는 경우입니다.`);
+    }
+  }
+
+  if(tab==='products'){
+    if(!D.ap.length) add('bad',`광고 제품 리포트가 없어 제품별 분석이 비어 있습니다. 광고 콘솔에서 <b>광고된 상품(Advertised product)</b> 리포트를 일~토 요약으로 뽑아 <b>reports/</b> 에 넣고 <b>npm run load</b> 를 실행하세요.`);
+    else{
+      const g=[...groupBy(D.ap,r=>r.asin).entries()].map(([asin,rs])=>({asin,a:agg(rs)}));
+      const issue=g.filter(x=>x.a.acos!=null&&(x.a.acos===Infinity||x.a.acos>hi)).sort((x,y)=>y.a.cost-x.a.cost);
+      const room=g.filter(x=>x.a.acos!=null&&x.a.acos<=lo);
+      if(issue.length) add('bad',`ACOS ${fmt(hi)}% 초과 ASIN <b>${issue.length}개</b> · ${money0s(sumC(issue))} — ${issue.slice(0,3).map(x=>x.asin).join(', ')}`);
+      if(room.length) add('good',`확대 여력 ASIN <b>${room.length}개</b> — ${room.slice(0,3).map(x=>x.asin).join(', ')}`);
+    }
+  }
+
+  if(tab==='data'){
+    const gapSt=META.weeks.filter(w=>!w.counts.st), gapTg=META.weeks.filter(w=>!w.counts.tg), gapAp=META.weeks.filter(w=>!w.counts.ap);
+    const gapCp=META.weeks.filter(w=>!w.counts.cp);
+    if(gapCp.length) add('bad',`캠페인 리포트가 없는 주차 <b>${gapCp.length}개</b> — KPI 기준값이 비어 상단 지표가 0으로 나옵니다: ${gapCp.map(w=>esc(w.label.split(' – ')[0])).join(', ')}`);
+    if(gapTg.length) add('warn',`타겟팅 리포트 누락 <b>${gapTg.length}주</b> · 서치텀 누락 <b>${gapSt.length}주</b> — 해당 주차는 검색어·입찰 분석이 불가합니다.`);
+    if(gapAp.length===META.weeks.length) add('warn',`광고 제품 리포트가 전 주차에 없습니다 — 제품별 탭이 비어 있습니다.`);
+    if(!gapCp.length&&!gapTg.length&&!gapSt.length&&!gapAp.length) add('good',`모든 주차에 4개 리포트가 모두 적재돼 있습니다.`);
+  }
+
+  return R;
+}
+function adviceCard(tab){
+  let rows=[];
+  try{ rows=adviceRows(tab); }catch(e){ return ''; }
+  if(!rows.length)return '';
+  const ico={bad:'●',warn:'●',good:'●',info:'●'};
+  return `<div class="card adv"><div class="card-head"><h2>제안<span class="sub">이 화면에서 지금 볼 것 · 기준 ACOS ${fmt(S.settings.acosLo)}~${fmt(S.settings.targetAcos)}%</span></h2>
+    <a href="#/data" class="btn sm" style="text-decoration:none">기준 설정 →</a></div>
+    <div class="card-body" style="padding-top:10px">
+      ${rows.map(r=>`<div class="adv-row ${r.level}"><span class="dot">${ico[r.level]}</span><div>${r.html}</div></div>`).join('')}
+    </div></div>`;
+}
 
 /* ═══════════════ Router ═══════════════ */
 const view=document.getElementById('view');
@@ -629,6 +771,7 @@ function renderOverview(){
       <span class="dim"> · KPI는 캠페인 리포트(총액) 기준</span></p></div>
       <div class="toolbar"><select class="inp" onchange="setOvCmp(this.value)">${cmpOpts}</select>${pfSelector(ovPf,'setOvPf')}</div></div>
     ${stCoverage()}
+    ${adviceCard('overview')}
     <div class="kpi-grid">
       <div class="kpi"><div class="k-label">지출</div><div class="k-val">${money0(a.cost)}</div>${sub(a.cost,b?.cost,true)}</div>
       <div class="kpi"><div class="k-label">광고 매출</div><div class="k-val">${money0(a.sales)}</div>${b?sub(a.sales,b.sales,false):`<div class="k-sub" title="NTB 매출은 캠페인 리포트에 비어 있어 서치텀 리포트 기준으로 계산합니다">NTB 비중 ${pct(aSt.ntbShare)} <span class="dim">(서치텀)</span></div>`}</div>
@@ -713,6 +856,7 @@ function renderPortfolio(){
   }).join('');
   view.innerHTML=`
     <div class="page-head"><div><h1>포트폴리오</h1><p>아마존 광고 콘솔의 포트폴리오를 자동 인식했습니다. 카드에서 제품별 이슈 기준 ACOS를 설정하세요. <span class="dim">· 캠페인 리포트(총액) 기준</span></p></div></div>
+    ${adviceCard('portfolio')}
     <div class="pf-grid">${cards}</div>`;
 }
 function editPfTarget(n){
@@ -743,6 +887,7 @@ function renderCampaigns(){
   view.innerHTML=`
     <div class="page-head"><div><h1>캠페인</h1><p>캠페인 리포트 기준 · SP/SB/SD 통합</p></div>
       <div class="toolbar"><button class="btn" onclick="exportCampaigns()">CSV 내보내기</button></div></div>
+    ${adviceCard('campaigns')}
     <div class="card"><div class="filters">
       ${pfSelector(cState.pf,'setCPf')}
       <span class="seg">
@@ -784,6 +929,7 @@ function renderProducts(){
   if(!D.ap.length){
     view.innerHTML=`
       <div class="page-head"><div><h1>제품별 분석</h1><p>한 캠페인에 여러 제품이 섞여 있어도 광고된 ASIN 단위로 분리해 보여줍니다.</p></div></div>
+      ${adviceCard('products')}
       <div class="card"><div class="card-body" style="text-align:center;padding:48px 24px">
         <b style="font-size:15px">이 기간에 광고 제품 리포트가 없습니다</b>
         <p class="hint" style="max-width:560px;margin:12px auto 0;text-align:left">
@@ -813,6 +959,7 @@ function renderProducts(){
   view.innerHTML=`
     <div class="page-head"><div><h1>제품별 분석</h1><p>광고 제품 리포트(SP) 기준 · 캠페인에 여러 제품이 섞여 있어도 광고된 ASIN 단위로 분리 · ✎로 표시용 제품명 지정</p></div>
       <div class="toolbar"><button class="btn" onclick="exportProducts()">CSV 내보내기</button></div></div>
+    ${adviceCard('products')}
     <div class="card"><div class="filters">
       ${pfSelector(pState.pf,'setPPf')}
       <input class="inp" placeholder="ASIN/제품명/캠페인 검색" value="${esc(pState.q)}" oninput="pState.q=this.value;clearTimeout(window.__pq);window.__pq=setTimeout(renderProducts,250)" style="width:220px">
@@ -879,6 +1026,7 @@ function renderTerms(){
       <div class="toolbar">
         <button class="btn" onclick="exportNegatives()">제외 후보 CSV</button>
         <button class="btn" onclick="exportTerms()">전체 내보내기</button></div></div>
+    ${adviceCard('terms')}
     <div class="card"><div class="filters">
       ${pfSelector(tState.pf,'setTPf')}
       ${clkSelect(tState.minClk,'setTClk')}
@@ -953,6 +1101,7 @@ function renderTargeting(){
   view.innerHTML=`
     <div class="page-head"><div><h1>타겟팅 분석</h1><p>경쟁사 ASIN 타겟팅(PT) vs 키워드 vs 오토·테마 — 카드를 눌러 필터링</p></div>
       <div class="toolbar"><button class="btn" onclick="exportTargets()">CSV 내보내기</button>${pfSelector(gState.pf,'setGPf')}</div></div>
+    ${adviceCard('targeting')}
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
       ${segCard('pt','제품 타겟팅 (경쟁사 ASIN)','asin= 타겟 · 경쟁 제품 상세페이지 노출')}
       ${segCard('kw','키워드 타겟팅','EXACT / PHRASE / BROAD')}
@@ -999,6 +1148,7 @@ function renderData(){
   view.innerHTML=`
     <div class="page-head"><div><h1>데이터 · 설정</h1><p>Google 시트 → SQLite → 이 화면. 주차는 일요일 시작 7일 블록만 적재되며, 부분 기간 행은 합계 오염을 막기 위해 버려집니다.</p></div>
       <div class="toolbar"><button class="btn" onclick="reloadData()">새로 불러오기</button><button class="btn danger" onclick="clearAll()">설정 초기화</button></div></div>
+    ${adviceCard('data')}
     <div class="card"><div class="card-head"><h2>데이터 파이프라인</h2></div><div class="card-body">
       <div class="hint" style="line-height:1.9">
         <b>1.</b> 광고 콘솔 리포트(Campaign / Search term / Targeting)를 매주 시트에 append<br>
@@ -1050,7 +1200,7 @@ function renderData(){
 }
 function setBrands(which,v){
   S.brands={...S.brands,[which]:v.split(',').map(s=>s.trim()).filter(Boolean)};
-  clearKindCache(); save(); renderData();
+  clearKindCache(); clearTermsMemo(); save(); renderData();
   toast(`${which==='own'?'자사':'경쟁사'} 브랜드 ${S.brands[which].length}개 저장`);
 }
 function clearAll(){ if(!confirm('목표 ACOS·판정 기준·브랜드 키워드를 초기화할까요?'))return; localStorage.removeItem(LS_KEY); location.reload(); }
