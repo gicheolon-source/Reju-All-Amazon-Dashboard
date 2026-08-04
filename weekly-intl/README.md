@@ -66,11 +66,15 @@ US 경량판(저장소 루트)과 집계 로직은 **완전히 동일**하고, �
 
 | Name | 필수 | 설명 |
 |---|---|---|
-| `SHEET_XX_MAIN_ID` | **O** | ASIN·Campaign 탭이 있는 시트 ID |
+| `SHEET_XX_MAIN_ID` | **O** | ASIN 탭이 있는 시트 ID |
 | `GID_XX_ASIN` | **O** | ASIN 탭 gid |
-| `GID_XX_CAMPAIGN` | **O** | Campaign 탭 gid |
+| `GID_XX_CAMPAIGN` | — | Campaign 탭 gid. 없으면 캠페인 표와 노출·클릭·CTR 만 빈 상태 |
 | `SHEET_XX_NOTES_ID` | — | 미설정 시 `SHEET_XX_MAIN_ID` 를 씀 |
 | `GID_XX_NOTES` | — | 없으면 코멘트만 빈 상태 |
+
+> **필수는 `SHEET_XX_MAIN_ID` + `GID_XX_ASIN` 둘뿐입니다.** 매출·유닛·세션·Ad Spend·
+> Ad Sales·ACOS·TACOS·ROAS 가 전부 ASIN 탭 출처라, Campaign 리포트를 안 받는
+> 마켓도 대시보드가 성립합니다 (CA 가 그런 경우 — 포트폴리오 단위로만 쌓고 있음).
 
 > **`US` 는 위 5개 전부 생략 가능합니다** — `COUNTRIES.US.sheets` 코드 기본값이
 > 쓰입니다. 설정하면 환경변수가 이깁니다.
@@ -101,12 +105,35 @@ US 경량판(저장소 루트)과 집계 로직은 **완전히 동일**하고, �
 컬럼은 **위치가 아니라 헤더 이름**으로 찾습니다 → 열 순서가 바뀌어도 안전.
 단 **헤더 문자열은 바꾸지 마세요.**
 
+### 헤더 비교는 대소문자·대시 종류를 무시합니다
+
+마켓플레이스마다 같은 컬럼 표기가 미묘하게 다릅니다. 실제로 확인된 차이:
+
+| 컬럼 | US | CA |
+|---|---|---|
+| 유닛 | `Units Ordered` | `Units ordered` (소문자 o) |
+| 세션 | `Sessions - Total` (하이픈) | `Sessions – Total` (**EN DASH** U+2013) |
+
+정확 일치만 하면 전 행이 스킵되어 **Units·Sessions 가 조용히 0** 이 됩니다(에러도 안 남).
+그래서 `idxOf` 가 **대소문자 · 대시 종류(‐‑‒–—―−) · 연속 공백**을 무시하고 비교합니다.
+
+> ⚠ 부분 일치(`includes`)는 쓰지 않습니다 — `Sessions - Total` 이
+> `Sessions - Total - B2B` 를 잡으면 B2B 수치가 섞입니다. 정규화 후에도 **완전 일치**입니다.
+> 새 마켓을 붙일 때 KPI 가 0 이면 헤더를 그대로 복사해 `idxOf` 별칭을 추가하세요.
+
 ### 지표별 출처
 
 | 지표 | 출처 | Campaign 리포트 없는 주차 |
 |---|---|---|
 | Total Sales · Units · Sessions · **Ad Spend** · **Ad Sales** · ACOS · TACOS · ROAS | **ASIN 탭** | 정상 표시 |
 | **Impressions** · **Clicks** · **CTR** · 캠페인 표 | **Campaign 탭** | `—` + `광고 리포트 미업로드` |
+
+> **ASIN 탭에도 `Impressions`·`Clicks` 열이 있지만 폴백으로 쓰지 않습니다.**
+> US 에서 두 출처를 같은 주차로 비교한 결과 ASIN 탭 노출수가 Campaign 탭보다
+> 일관되게 **20~35% 낮았습니다** (W26 5,681,291 vs 3,727,057 / W29 4,371,667 vs 2,888,450,
+> 클릭은 −10~18%). ASIN 탭은 자사 ASIN 귀속분만, Campaign 탭은 캠페인 전체를 담기 때문입니다.
+> 섞으면 폴백을 쓴 국가의 CTR 이 분모만 작아져 구조적으로 높게 나오고, 국가 간 비교가
+> 무의미해집니다. 그래서 Campaign 탭이 없는 국가는 `—` 로 둡니다.
 
 ### 주간/월간 자동 라우팅 (Campaign 리포트)
 

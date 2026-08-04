@@ -121,10 +121,14 @@ export default async function handler(req, res) {
 
   /* 해당 국가의 시트 좌표가 아직 안 채워진 상태 — 500 이 아니라 안내를 준다.
      4개국을 순차적으로 온보딩하는 동안 나머지 국가가 에러를 뿜지 않도록. */
+  /* ASIN 탭만 있으면 대시보드는 성립한다 — 매출·유닛·세션·Spend·Ad Sales·ACOS·
+     TACOS·ROAS 가 전부 ASIN 탭 출처다. Campaign 탭은 캠페인 표와 노출/클릭 전용이라
+     없는 국가도 있다 (CA 는 캠페인 리포트를 안 받고 포트폴리오 단위로만 쌓는다).
+     그래서 GID_XX_CAMPAIGN 은 필수가 아니다. */
   const CFG = sheetCfg(country);
-  if (!CFG.mainId || !Number.isFinite(CFG.gidAsin) || !Number.isFinite(CFG.gidCampaign))
+  if (!CFG.mainId || !Number.isFinite(CFG.gidAsin))
     return res.status(200).json({ ...base, demo: true,
-      reason: `${country} not configured — SHEET_${country}_MAIN_ID / GID_${country}_ASIN / GID_${country}_CAMPAIGN 를 설정하세요` });
+      reason: `${country} not configured — SHEET_${country}_MAIN_ID / GID_${country}_ASIN 를 설정하세요` });
 
   try {
     const auth = new GoogleAuth({
@@ -141,7 +145,9 @@ export default async function handler(req, res) {
     const titleCache = {};   // 요청 단위 — 탭 이름 변경이 즉시 반영되도록
     const [asin, camp, notes] = await Promise.all([
       readTab(CFG.mainId, CFG.gidAsin, H, titleCache),
-      readTab(CFG.mainId, CFG.gidCampaign, H, titleCache),
+      // Campaign 탭 미설정 국가는 [] — 캠페인 표만 비고 KPI 는 정상 표시된다
+      Number.isFinite(CFG.gidCampaign)
+        ? readTab(CFG.mainId, CFG.gidCampaign, H, titleCache) : Promise.resolve([]),
       readNotes(CFG, H, titleCache),   // 코멘트 시트 접근 불가여도 [] 반환 → 대시보드는 정상 동작
     ]);
 
@@ -250,7 +256,25 @@ function parseRange(s) {                  // "Jun 01, 2026 - Jun 30, 2026"
   const mk = g => new Date(Date.UTC(+g[3], MON[g[1]], +g[2]));
   return [mk(m[0]), mk(m[1])];
 }
-const idxOf = (header, name) => header.indexOf(name);
+/* 헤더 이름으로 컬럼 찾기 — 마켓플레이스마다 표기가 미묘하게 다르다.
+   실제로 US 와 CA 시트에서 확인된 차이:
+     "Units Ordered"    (US) vs "Units ordered"    (CA)  ← 대소문자
+     "Sessions - Total" (US) vs "Sessions – Total"  (CA)  ← 하이픈 vs EN DASH(U+2013)
+   정확 일치만 하면 전 행이 스킵되어 Units·Sessions 가 조용히 0 이 된다(에러도 안 난다).
+   그래서 대소문자 · 대시 종류 · 연속 공백을 무시하고 비교한다.
+
+   ⚠ 부분 일치(includes)는 쓰지 않는다 — "Sessions - Total" 이
+     "Sessions - Total - B2B" 를 잡아버리면 B2B 수치가 섞인다.
+     정규화 후에도 '완전 일치' 여야 한다. */
+const normHdr = s => String(s ?? '').trim().toLowerCase()
+  .replace(/[‐-―−]/g, '-')   // ‐‑‒–—―− → -
+  .replace(/\s+/g, ' ');
+const idxOf = (header, name) => {
+  const i = header.indexOf(name);           // 정확 일치가 있으면 그대로 (가장 빠름)
+  if (i >= 0) return i;
+  const want = normHdr(name);
+  return header.findIndex(h => normHdr(h) === want);
+};
 
 /* ── NOTES 탭 파싱 → { 정규화된 주차키: {overview, sales, ads} } ──
    헤더(1행): Week | Overview | Sales | Advertising  (한글 별칭도 허용)
