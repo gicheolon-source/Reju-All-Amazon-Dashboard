@@ -355,6 +355,11 @@ export function buildDashboard({ asin, camp, notes }) {
   const wk = key => (weeks[key] ||= {
     totalSales: 0, units: 0, sessions: 0, spend: 0, sales: 0,
     daily: {}, products: {},
+    /* 광고열이 '며칠분' 채워졌는지 추적한다. Spend 는 7일 있는데 Ad Sales 만 1일뿐인
+       주차(UK W29: 7/19 하루만 입력)를 골라내는 데 쓴다 — 이런 주차는 합계가 0 이
+       아니라 '부분값' 이라 0 검사로는 걸리지 않고, ACOS 가 461% 처럼 폭발한다.
+       임계값이 아니라 '날짜 수 불일치' 라는 사실로 판별하므로 임의성이 없다. */
+    spendDays: new Set(), salesDays: new Set(),
   });
   for (const x of aRows) {
     const a = str(x[c.asin]); if (!a) continue;
@@ -364,6 +369,8 @@ export function buildDashboard({ asin, camp, notes }) {
           sp = money(x[c.spend]), asl = money(x[c.adsales]), se = money(x[c.sess]);
     w.totalSales += ts; w.units += un; w.sessions += se; w.spend += sp; w.sales += asl;
     const dk = iso(d);
+    if (sp) w.spendDays.add(dk);
+    if (asl) w.salesDays.add(dk);
     const dd = (w.daily[dk] ||= [0, 0, 0]); dd[0] += ts; dd[1] += asl; dd[2] += un;
     const pr = (w.products[a] ||= [0, 0, 0]); pr[0] += un; pr[1] += ts; pr[2] += se;
   }
@@ -440,8 +447,21 @@ export function buildDashboard({ asin, camp, notes }) {
        ⚠ 두 출처는 집계 기준이 달라 값이 다르다 (US 실측: ASIN $33,592 vs
          Campaign $42,152, 약 25% 차이). 그래서 어느 쪽을 썼는지 adSrc 로 내려보내
          화면에 밝힌다. ASIN 탭에 값이 있는 마켓(US 등)은 기존 동작 그대로다. */
+    /* 조건이 '한쪽만 비어도' 인 이유 — UK 는 ASIN 탭에 Spend 는 있는데 Ad Sales 만
+       2026-07-19 에서 끊겼다. 그 결과 W30 이 Spend £1,202 / Sales £0 → ROAS 0.00 으로
+       나왔다. 광고비를 썼는데 매출 0 이라는 거짓 신호다.
+       이때 ASIN 의 spend 와 Campaign 의 sales 를 섞으면 안 된다 — 기준이 다른 분자·분모로
+       ACOS 를 만들면 숫자가 무의미해진다. 그래서 한쪽이라도 비면 둘 다 Campaign 에서
+       가져와 내부 정합성을 지킨다.
+       ※ 광고비를 썼고 실제로 매출이 0 인 주차라면 Campaign 쪽 Sales 도 0 이므로
+         바꿔도 값이 달라지지 않는다. 판별 불가한 경우에 손해가 없다. */
+    /* ASIN 광고열이 이 주차에서 미완성인가:
+         · 한쪽 합계가 0        (열 자체가 안 채워짐)
+         · Spend 있는 날 수 ≠ Ad Sales 있는 날 수  (일부 날짜만 채워짐) */
+    const asinAdPartial = !Math.round(w.spend) || !Math.round(w.sales) ||
+                          w.spendDays.size !== w.salesDays.size;
     let spend = Math.round(w.spend), sales = Math.round(w.sales), adSrc = 'asin';
-    if (!spend && !sales && has) {
+    if (has && asinAdPartial) {
       spend = Math.round(aw.spend);
       sales = Math.round(aw.sales);
       adSrc = 'campaign';
