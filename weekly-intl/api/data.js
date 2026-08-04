@@ -1,7 +1,8 @@
 // /api/data — Google Sheets(RAW Amazon exports) → 주간 집계 대시보드 JSON  [WEEKLY INTL]
 //
-// 다국가판. 한 배포에서 CA / UK / AU / AE 를 전환한다 (`/api/data?country=CA`).
+// 다국가판. 한 배포에서 US / CA / UK / AU / AE 를 전환한다 (`/api/data?country=CA`).
 // 집계 로직은 US 경량판과 동일하고, 달라진 것은 "어느 시트를 읽을지"뿐이다.
+// US 는 시트 좌표가 COUNTRIES.US.sheets 에 박혀 있어 환경변수 없이도 동작한다.
 //
 // 주간 보고 전용 경량판. 광고 심층분석(키워드/서치텀/네거티브)은 별도 대시보드가 담당한다.
 //   · Search term / Targeting 리포트 → 미사용 (표시 지표에 기여하지 않음 — 검증 완료)
@@ -12,13 +13,14 @@
 //
 // 필요 환경변수 (Vercel → Settings → Environment Variables):
 //   GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY    (필수 — 없으면 전체 demo)
-//   국가별 (XX = CA | UK | AU | AE):
+//   국가별 (XX = US | CA | UK | AU | AE):
 //     SHEET_XX_MAIN_ID     필수 — ASIN·Campaign 탭이 있는 시트 ID
 //     GID_XX_ASIN          필수 — ASIN 탭 gid
 //     GID_XX_CAMPAIGN      필수 — Campaign 탭 gid
 //     SHEET_XX_NOTES_ID    선택 — 미설정 시 SHEET_XX_MAIN_ID 를 씀
 //     GID_XX_NOTES         선택 — 없으면 코멘트만 빈 상태
-//   DEFAULT_COUNTRY        선택 — 최초 진입 국가 (기본 CA)
+//     ※ US 는 코드 기본값이 있어 위 전부 생략 가능 (넣으면 환경변수가 이긴다)
+//   DEFAULT_COUNTRY        선택 — 최초 진입 국가 (기본 US)
 //   WEEKS_SHOWN            선택 — 표시 주차 수 (기본 16)
 //
 // ※ 국가마다 시트를 따로 쓰든, 한 시트에 국가별 탭을 두든 모두 지원된다.
@@ -30,31 +32,53 @@ import { GoogleAuth } from 'google-auth-library';
 
 /* ── 국가(마켓플레이스) 설정 ─────────────────────────────────────
    국가를 추가·제거할 때 손대는 곳은 여기 하나다.
-   US 를 이 대시보드에 합치고 싶으면 US 항목만 추가하면 된다.
-   ⚠ dec/currency 를 바꿔도 집계는 그대로다 — 표시 형식만 바뀐다. */
+   나열 순서가 화면 셀렉터의 버튼 순서다.
+   ⚠ dec/symbol 을 바꿔도 집계는 그대로다 — 표시 형식만 바뀐다.
+
+   sheets 는 선택 사항인 코드 기본값이다. 있으면 환경변수 없이도 동작하고,
+   환경변수가 있으면 그쪽이 이긴다. US 는 이미 운영 중인 시트가 있어 박아 두었다
+   (이 ID 들은 저장소 README 에도 이미 적혀 있고, 실제 접근 권한은 시트 공유가
+    통제하므로 ID 자체는 비밀이 아니다). */
 const COUNTRIES = {
-  CA: { label: 'Canada',       short: 'CA', flag: '🇨🇦', symbol: 'C$',   iso: 'CAD', dec: 2 },
-  UK: { label: 'United Kingdom', short: 'UK', flag: '🇬🇧', symbol: '£',  iso: 'GBP', dec: 2 },
-  AU: { label: 'Australia',    short: 'AU', flag: '🇦🇺', symbol: 'A$',   iso: 'AUD', dec: 2 },
-  AE: { label: 'Middle East',  short: 'AE', flag: '🇦🇪', symbol: 'AED ', iso: 'AED', dec: 2 },
+  US: { label: 'United States', short: 'US', flag: '🇺🇸', symbol: '$',    iso: 'USD', dec: 2,
+        sheets: {
+          mainId:      '1tlz01J78avbCMn2zObK1gN5-Sy1oPwz_VthdalC49ao',
+          gidAsin:     952475532,
+          gidCampaign: 1710166971,
+          notesId:     '1GOClg8wNjUOJAQzcu2dGbENoMWrMCMd4vzx-LLqkFqA',
+          gidNotes:    119883587,
+        } },
+  CA: { label: 'Canada',        short: 'CA', flag: '🇨🇦', symbol: 'C$',   iso: 'CAD', dec: 2 },
+  UK: { label: 'United Kingdom', short: 'UK', flag: '🇬🇧', symbol: '£',   iso: 'GBP', dec: 2 },
+  AU: { label: 'Australia',     short: 'AU', flag: '🇦🇺', symbol: 'A$',   iso: 'AUD', dec: 2 },
+  AE: { label: 'Middle East',   short: 'AE', flag: '🇦🇪', symbol: 'AED ', iso: 'AED', dec: 2 },
 };
+/* 최초 진입 국가는 US — 유일하게 실데이터가 있는 마켓이라, 처음 열었을 때
+   데모 화면이 아니라 실제 숫자가 보이는 게 낫다. DEFAULT_COUNTRY 로 바꿀 수 있다. */
 const DEFAULT_COUNTRY = (() => {
-  const c = String(process.env.DEFAULT_COUNTRY || 'CA').toUpperCase();
-  return COUNTRIES[c] ? c : 'CA';
+  const c = String(process.env.DEFAULT_COUNTRY || 'US').toUpperCase();
+  return COUNTRIES[c] ? c : 'US';
 })();
 
-/* 국가별 시트 좌표를 환경변수에서 읽는다. 값이 없으면 빈 문자열/NaN 이 되고,
-   handler 가 이를 "미설정"으로 판정해 500 대신 안내용 demo 응답을 준다. */
+/* 국가별 시트 좌표: 환경변수 > COUNTRIES[cc].sheets 기본값.
+   둘 다 없으면 빈 문자열/NaN 이 되고, handler 가 이를 "미설정"으로 판정해
+   500 대신 안내용 demo 응답을 준다. */
 const num = v => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : NaN; };
 function sheetCfg(cc) {
-  const mainId = process.env[`SHEET_${cc}_MAIN_ID`] || '';
+  const d = (COUNTRIES[cc] && COUNTRIES[cc].sheets) || {};
+  const pick    = (env, def) => process.env[env] || def || '';
+  const pickNum = (env, def) => {
+    const n = num(process.env[env]);
+    return Number.isFinite(n) ? n : (Number.isFinite(def) ? def : NaN);
+  };
+  const mainId = pick(`SHEET_${cc}_MAIN_ID`, d.mainId);
   return {
     mainId,
-    gidAsin:     num(process.env[`GID_${cc}_ASIN`]),
-    gidCampaign: num(process.env[`GID_${cc}_CAMPAIGN`]),
+    gidAsin:     pickNum(`GID_${cc}_ASIN`,     d.gidAsin),
+    gidCampaign: pickNum(`GID_${cc}_CAMPAIGN`, d.gidCampaign),
     // NOTES 는 별도 시트도 되고 같은 시트도 된다
-    notesId:  process.env[`SHEET_${cc}_NOTES_ID`] || mainId,
-    gidNotes: num(process.env[`GID_${cc}_NOTES`]),
+    notesId:  pick(`SHEET_${cc}_NOTES_ID`, d.notesId) || mainId,
+    gidNotes: pickNum(`GID_${cc}_NOTES`, d.gidNotes),
   };
 }
 /* 프런트엔드 국가 셀렉터는 이 목록으로 그린다 (설정된 국가만 활성).
