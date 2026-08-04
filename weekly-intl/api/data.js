@@ -39,7 +39,7 @@ import { GoogleAuth } from 'google-auth-library';
    환경변수가 있으면 그쪽이 이긴다. US 는 이미 운영 중인 시트가 있어 박아 두었다
    (이 ID 들은 저장소 README 에도 이미 적혀 있고, 실제 접근 권한은 시트 공유가
     통제하므로 ID 자체는 비밀이 아니다). */
-const COUNTRIES = {
+export const COUNTRIES = {
   US: { label: 'United States', short: 'US', flag: '🇺🇸', symbol: '$',    iso: 'USD', dec: 2,
         sheets: {
           mainId:      '1tlz01J78avbCMn2zObK1gN5-Sy1oPwz_VthdalC49ao',

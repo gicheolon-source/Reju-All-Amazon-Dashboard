@@ -487,6 +487,10 @@ let CUR = '$';        // 통화 기호 (C$ · £ · A$ · AED )
 let CDEC = 2;         // 소수점 자릿수
 let COUNTRY = '';     // 현재 국가 코드
 let COUNTRY_LIST = [];
+/* 데이터가 한 국가 것뿐일 때(오프라인 단일 파일 · data.sample.json 폴백) 그 국가 코드.
+   이때 다른 국가 버튼을 누를 수 있게 두면 "UK 버튼 + US 숫자 + £ 기호" 가 되어
+   존재하지 않는 매출을 보여주게 된다. 그래서 셀렉터를 이 국가로 잠근다. */
+let LOCKED_COUNTRY = null;
 
 /* 최초 진입 국가: URL(?country=) > 직전 선택(localStorage) > 서버 기본값 */
 const urlCountry = (new URLSearchParams(location.search).get('country') || '').toUpperCase();
@@ -721,14 +725,24 @@ function renderCountryNav(){
   nav.querySelectorAll('.ct-btn').forEach(b=>b.remove());
   (COUNTRY_LIST.length ? COUNTRY_LIST : FALLBACK_COUNTRIES).forEach(c=>{
     const btn = document.createElement('button');
+    /* 단일 국가 데이터일 때: 해당 국가 외에는 비활성 — 클릭 자체를 막는다 */
+    const locked = LOCKED_COUNTRY && c.code !== LOCKED_COUNTRY;
     btn.className = 'ct-btn' + (c.code===COUNTRY ? ' active' : '')
-                  + (c.ready===false ? ' pending' : '');
+                  + (c.ready===false && !locked ? ' pending' : '');
     btn.innerHTML = `<span class="ct-flag">${c.flag||''}</span>${c.short||c.code}` +
       `<span class="ct-cur">${(c.currency&&c.currency.iso)||''}</span>`;
-    btn.title = c.ready===false ? `${c.label} — 시트 미연결` : c.label;
-    if(c.code!==COUNTRY) btn.addEventListener('click', ()=>switchCountry(c.code));
+    if(locked){
+      btn.disabled = true;
+      btn.title = `${c.label} — 이 파일에는 ${LOCKED_COUNTRY} 데이터만 들어 있습니다`;
+    } else {
+      btn.title = c.ready===false ? `${c.label} — 시트 미연결` : c.label;
+      if(c.code!==COUNTRY) btn.addEventListener('click', ()=>switchCountry(c.code));
+    }
     nav.appendChild(btn);
   });
+  /* 잠긴 이유를 라벨에 한 번 더 밝힌다 (버튼 tooltip 만으로는 안 보이므로) */
+  const lbl = nav.querySelector('.ct-label');
+  if(lbl) lbl.textContent = LOCKED_COUNTRY ? `Market · ${LOCKED_COUNTRY} 전용 데이터` : 'Market';
 }
 
 /* 국가 전환은 전체 리로드로 처리한다 — 차트 인스턴스·주차 선택·캠페인 필터를
@@ -745,6 +759,9 @@ async function loadData(){
   /* 국가·통화 메타 반영. demo 응답에도 들어 있으므로 데이터 성공 여부와 무관하게 적용한다
      (시트 미연결 국가에서도 셀렉터로 다른 국가로 넘어갈 수 있어야 하므로). */
   const applyMeta = d => {
+    /* singleCountry = 한 국가 데이터만 든 샘플/오프라인 파일 → 셀렉터를 잠근다.
+       라이브 API 응답에는 이 필드가 없으므로 배포판 전환은 그대로 동작한다. */
+    if(d && d.singleCountry && d.country) LOCKED_COUNTRY = d.country;
     if(d && d.country) COUNTRY = d.country;
     if(d && Array.isArray(d.countries) && d.countries.length) COUNTRY_LIST = d.countries;
     const hit = (COUNTRY_LIST.length ? COUNTRY_LIST : FALLBACK_COUNTRIES)
@@ -784,7 +801,8 @@ async function loadData(){
       if(!r2.ok) throw 0;
       const d2 = await r2.json();
       if(!Array.isArray(d2.weeks) || !d2.weeks.length) throw 0;
-      apply(d2, 'Data source: 로컬 샘플(data.sample.json)');
+      apply(d2, `Data source: 로컬 샘플(data.sample.json)` +
+        (d2.country ? ` · ${d2.countryLabel||d2.country} 데이터만 포함` : ''));
     }catch(e2){
       isDemo = true;
       WEEKS = DEMO_WEEKS;
