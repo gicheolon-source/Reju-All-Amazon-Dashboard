@@ -755,6 +755,24 @@ function switchCountry(code){
   location.href = u.toString();      // hash(현재 페이지)는 URL 객체가 보존한다
 }
 
+/* 최초 선택 주차 — 진행 중인 주는 건너뛰고 '마지막 완료 주차'를 고른다.
+   최신 주차를 그냥 고르면 오늘이 화요일일 때 2일치만 집계된 주가 열려서
+   매출이 폭락한 것처럼 보이고, 그 주 광고 리포트는 아직 없으니 캠페인 표도 비어
+   "데이터가 반영 안 됐다" 로 읽힌다. (캐나다 캠페인 연결 직후 실제로 이 오해가 있었다)
+   주차 버튼은 그대로 남아 있으니 진행 중인 주를 보려면 클릭하면 된다. */
+function defaultWeekIndex(weeks){
+  if(!Array.isArray(weeks) || !weeks.length) return 0;
+  const n = new Date();
+  const todayUTC = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+  for(let i = weeks.length - 1; i >= 0; i--){
+    const m = String(weeks[i].key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) continue;
+    const end = Date.UTC(+m[1], +m[2] - 1, +m[3]) + 6 * 86400000;   // 일요일 + 6일 = 토요일
+    if(end < todayUTC) return i;                                     // 종료일이 이미 지난 주차
+  }
+  return weeks.length - 1;   // 전부 진행 중(데이터가 이번 주뿐)이면 그대로 최신
+}
+
 async function loadData(){
   /* 국가·통화 메타 반영. demo 응답에도 들어 있으므로 데이터 성공 여부와 무관하게 적용한다
      (시트 미연결 국가에서도 셀렉터로 다른 국가로 넘어갈 수 있어야 하므로). */
@@ -822,7 +840,7 @@ async function loadData(){
     ? `* 데모 모드 — Vercel 환경변수(SHEET_${COUNTRY}_MAIN_ID · GID_${COUNTRY}_ASIN · GID_${COUNTRY}_CAMPAIGN) 설정 후 실제 데이터가 표시됩니다.`
     : '* 본 리포트는 Amazon Business Report 및 Sponsored Ads 리포트 기반으로 작성되었습니다.';
 
-  current = WEEKS.length - 1;
+  current = defaultWeekIndex(WEEKS);
   buildNav();
   route();  // 해시 기반 초기 페이지
   document.getElementById('loading').classList.add('hide');
