@@ -227,15 +227,23 @@ const money = v => {
 };
 const str = v => String(v ?? '').trim();
 
-function pdate(s) {                       // "2026-07-15", "2026- 7- 8", "2026/7/8"
-  const t = String(s ?? '').replace(/\s+/g, '');
-  const m = t.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/) ||
-            (t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/) && (() => {
-              const x = t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-              return [null, x[3], x[1], x[2]];
-            })());
+/* 날짜 파싱 — 시트마다 구분자와 공백이 다르다. 실측된 형태:
+     "2026-07-15" (UK/AU)  "2026- 8- 2" (US/CA)  "2026/7/8"
+     "2026. 8. 2" (AE)  ← 마침표 구분. 로케일이 다른 환경에서 붙여넣으면 이렇게 된다.
+   ⚠ 마침표를 안 받아주면 해당 행이 조용히 버려진다. AE 시트에서 실제로 238행
+     (2026-06-26 ~ 2026-08-02, 매출 109,600)이 통째로 누락되어 최근 5주가
+     대시보드에서 사라져 있었다. 파싱 실패는 에러가 아니라 '행 스킵'이라 조용하다.
+   반환 null 인 행은 스킵된다 — 데이터 중간에 섞인 머리글("Date") 같은 잡행 처리용. */
+function pdate(s) {
+  const t = String(s ?? '').replace(/\s+/g, '').replace(/\.$/, '');   // "2026.8.2." 도 허용
+  const ymd = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/;
+  const mdy = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/;
+  const m = t.match(ymd) ||
+            (t.match(mdy) && (() => { const x = t.match(mdy); return [null, x[3], x[1], x[2]]; })());
   if (!m) return null;
-  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return new Date(Date.UTC(y, mo - 1, d));
 }
 const dayMs = 86400000;
 const weekSun = d => new Date(d.getTime() - d.getUTCDay() * dayMs);   // Sunday of d's week
