@@ -430,10 +430,26 @@ export function buildDashboard({ asin, camp, notes }) {
     const has = !!(aw && aw.spend > 0);
     const lbl = wkLabel(sun);
     const note = noteMap[normKey(lbl)] || noteMap[normKey(key)] || null;
+    /* Ad Spend·Ad Sales 는 원래 ASIN 탭 출처다. 그런데 마켓에 따라 ASIN 탭의
+       Spend·Ad Sales 열이 비어 있고 Campaign 리포트만 있는 경우가 있다
+       (CA: ASIN 탭 광고열이 2026-05-06 에서 끊겼는데 Campaign 탭에 W30 이 있음).
+       이때 0 을 그대로 내보내면 ACOS 가 0.0% 로 찍혀 '효율 완벽' 이라는 정반대
+       신호를 준다 — 실제로는 C$10,667 을 써서 38.6% 였다. 단순 누락이 아니라
+       거짓 신호이므로, ASIN 쪽이 비었고 Campaign 쪽에 값이 있으면 Campaign 을 쓴다.
+
+       ⚠ 두 출처는 집계 기준이 달라 값이 다르다 (US 실측: ASIN $33,592 vs
+         Campaign $42,152, 약 25% 차이). 그래서 어느 쪽을 썼는지 adSrc 로 내려보내
+         화면에 밝힌다. ASIN 탭에 값이 있는 마켓(US 등)은 기존 동작 그대로다. */
+    let spend = Math.round(w.spend), sales = Math.round(w.sales), adSrc = 'asin';
+    if (!spend && !sales && has) {
+      spend = Math.round(aw.spend);
+      sales = Math.round(aw.sales);
+      adSrc = 'campaign';
+    }
     return {
       key, label: lbl, range: wkRange(sun),
       totalSales: Math.round(w.totalSales), units: Math.round(w.units),
-      sessions: Math.round(w.sessions), spend: Math.round(w.spend), sales: Math.round(w.sales),
+      sessions: Math.round(w.sessions), spend, sales, adSrc,
       daily, products, notes: [], note,
       ads: {
         hasAds: has,

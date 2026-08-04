@@ -1090,11 +1090,17 @@ function renderSales(){
 function renderAds(){
   const w = WEEKS[current], p = WEEKS[current-1] || null;
   const src = adSourceFor(w);
-  const srcNote = src.empty
+  /* Ad Spend·Ad Sales 가 ASIN 탭이 아니라 Campaign 리포트에서 온 주차는 밝혀둔다.
+     두 출처는 집계 기준이 달라 값이 다르므로(US 실측 약 25% 차이) 주차·국가 간
+     비교할 때 알고 봐야 한다. */
+  const basisNote = w.adSrc === 'campaign'
+    ? ` · Ad Spend·Ad Sales 는 <b>캠페인 리포트 기준</b> (ASIN 탭 광고열 미입력)`
+    : '';
+  const srcNote = (src.empty
     ? `⚠ ${w.label} 주간 광고 리포트 미업로드`
     : src.isMonthly
       ? `⚠ ${w.label} 주간 광고 리포트 미업로드 — 최근 <b>${src.label}</b> 스냅샷 표시`
-      : `출처: ${src.label} 광고 리포트`;
+      : `출처: ${src.label} 광고 리포트`) + basisNote;
 
   /* Impressions·Clicks 는 Campaign 리포트에만 있는 지표다 (Spend/Sales 는 ASIN 탭 출처).
      해당 주차 캠페인 리포트가 없으면 월간 스냅샷으로 대체하지 않고 '—' 로 둔다 —
