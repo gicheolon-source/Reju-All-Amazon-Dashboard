@@ -81,6 +81,7 @@ td input[type=number],td input[type=date],td input[type=text]{
   width:90px;border:1px solid transparent;background:var(--amber-soft);border-radius:3px;
   padding:4px 6px;text-align:right}
 td input[type=text]{text-align:left;width:130px;background:var(--amber-soft)}
+td input[type=date]{width:150px}  /* 90px 로는 yyyy-mm-dd + 달력 아이콘이 잘린다 */
 td input:focus{outline:2px solid var(--orange);background:#fff}
 td select{border:1px solid var(--line);border-radius:3px;padding:4px;background:#fff}
 .pill{display:inline-block;font-family:var(--sans);font-size:11.5px;font-weight:600;
@@ -673,7 +674,7 @@ function vSet(){
   ${row('항공 리드타임 (개월)','airLead',0.5,'한국 → 현지 항공 운송')}
   ${row('3PL→FBA 리드타임 (주)','plToFbaWeeks',1,'3PL 출고 → FC 입고 완료. Q4 후반 3~4주로 지연 가능')}
   ${row('발주 버퍼 (개월)','buffer',0.5,'3PL 미운영 시 리드타임에 더하는 안전 여유')}
-  <tr><td class="txt">PBDD 행사일</td><td><input type="date" value="${s.pbdd}" onchange="setS('pbdd',this.value)"></td><td class="txt" style="font-size:12px;color:var(--sub)">헤더 D-day의 기준일</td></tr>
+  <tr><td class="txt"><input type="text" value="${s.eventLabel||''}" onchange="setS('eventLabel',this.value)" style="width:80px"> 행사일</td><td><input type="date" value="${s.pbdd}" onchange="setS('pbdd',this.value)"></td><td class="txt" style="font-size:12px;color:var(--sub)">행사 이름·날짜 — 헤더 D-day 기준 (행사가 끝나면 다음 행사로 바꾸세요. 예: PBDD → BFCM)</td></tr>
   </tbody></table></div></div>`;
 
   if(sheetMode()){
@@ -703,7 +704,7 @@ function vSet(){
 function setTgt__inner(pi,i,v){ S.products[pi].targets[i]=Number(v)||0; save(); render(); }
 function setCov__inner(i,v){ S.coverage[i]=Number(v)||0; save(); render(); }
 function setP__inner(pi,k,v){ S.products[pi][k]=Number(v)||0; save(); render(); }
-function setS__inner(k,v){ S.settings[k]=(k==='pbdd')?v:(Number(v)||0); save(); render(); }
+function setS__inner(k,v){ S.settings[k]=(k==='pbdd'||k==='eventLabel')?v:(Number(v)||0); save(); render(); }
 function addPipe__inner(){
   const g=id=>document.getElementById(id).value;
   const qty=Number(g('npQty'));
