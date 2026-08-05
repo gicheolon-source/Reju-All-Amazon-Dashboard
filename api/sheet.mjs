@@ -10,7 +10,8 @@
  * 필요한 환경변수 (Vercel):
  *   GOOGLE_SERVICE_ACCOUNT_EMAIL   서비스 계정 이메일 — 이 주소로 시트를 '뷰어' 공유할 것
  *   GOOGLE_PRIVATE_KEY             서비스 계정 비공개 키 (\n 이스케이프된 형태 허용)
- *   SHEET_ID_US / SHEET_ID_JP      스프레드시트 ID (URL 의 /d/ 와 /edit 사이)
+ *   SHEET_ID_<국가코드>            스프레드시트 ID (URL 의 /d/ 와 /edit 사이)
+ *                                 예: SHEET_ID_US, SHEET_ID_CA, SHEET_ID_UK, SHEET_ID_AU, SHEET_ID_AE
  *   SHEET_TAB_TARGETS/_DATA        (선택) 탭 이름이 기본값과 다를 때만
  *
  * 의존성 없음 — JWT 를 node:crypto 로 직접 서명하므로 package.json 이 필요 없고

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDRN Skincare · 재고 관제 대시보드 (US/JP)</title>
+<title>PDRN Skincare · 재고 관제 대시보드 (US/CA/UK/AU/AE)</title>
 <style>
 :root{
   --paper:#F4F5F1; --card:#FFFFFF; --ink:#17242F; --sub:#5B6B76;
@@ -159,17 +159,24 @@ const SUPABASE_ANON_KEY = ""; // Settings > API > anon public key
 
 // ▼▼▼ 구글 시트 소스 (비우면 해당 탭은 웹에서 직접 입력) ▼▼▼
 // 서비스 계정으로 읽는 /api/sheet 프록시를 경유한다 — 시트는 비공개로 유지된다.
-// 스프레드시트 ID는 코드가 아니라 Vercel 환경변수 SHEET_ID_US / SHEET_ID_JP 에 둔다.
+// 스프레드시트 ID는 코드가 아니라 Vercel 환경변수 SHEET_ID_<국가코드> 에 둔다.
 // (공개 "웹에 게시" CSV 주소를 직접 넣어도 동작한다 — 그 경우 api/sheet.mjs 는 안 쓰임)
+//
+// 국가를 시트에 연결하는 순서:
+//   1) US 시트를 복사해 새 시트를 만든다 (탭 이름 '월별 목표'/'Data 입력' 유지)
+//   2) 서비스 계정 이메일을 뷰어로 공유한다 (IMPORTRANGE 쓰면 '액세스 허용' 클릭)
+//   3) Vercel 환경변수에 SHEET_ID_CA 등을 추가한다
+//   4) 아래 해당 국가를 US 와 같은 형태로 채운다
+// 비워두면 그 국가의 '월별 목표'·'Data' 탭은 웹에서 직접 입력하는 모드로 작동한다.
 const SHEET = {
   US: {
     targets: "/api/sheet?country=US&tab=targets",
     data:    "/api/sheet?country=US&tab=data",
   },
-  JP: {
-    targets: "",  // JP 시트를 만들면 "/api/sheet?country=JP&tab=targets"
-    data:    "",
-  },
+  CA: { targets: "", data: "" },
+  UK: { targets: "", data: "" },
+  AU: { targets: "", data: "" },
+  AE: { targets: "", data: "" },
 };
 const sheetMode = () => !!(SHEET[G.country] && SHEET[G.country].targets);
 
@@ -207,16 +214,33 @@ const US_DEFAULT = {
   ],
   updated:''
 };
-const JP_DEFAULT = {
-  settings:{ threePL:0.5, seaLead:0.5, airLead:0.25, plToFbaWeeks:1, buffer:0.5, pbdd:'2026-10-17', eventLabel:'감사제' },
-  coverage:[1,1,1.5,1,1,1.5,1,1.5,1],
+// 신설 시장은 3PL 미운영(threePL:0)으로 시작한다 → FBA 단일 모드로 자동 전환되고
+// '보충 필요' 열이 비활성된다. 물류 수치는 US 값을 물려받되, 실제 리드타임은
+// 시장마다 다르므로 운영 시작 전에 '설정' 탭에서 국가별로 조정해야 한다.
+// 행사일(pbdd)은 시장별로 달라 비워둔다 — 설정 탭에서 넣으면 헤더에 D-day가 뜬다.
+const newMarket = (over={}) => ({
+  settings:{ threePL:0, seaLead:2, airLead:0.5, plToFbaWeeks:2, buffer:0.5, pbdd:'', eventLabel:'행사', ...over },
+  coverage:[2,2,2,2,2,2,2,2,2],
   products:[],
   pipeline:[],
   updated:''
-};
+});
+
 const COUNTRY_META = {
-  US: { label:'🇺🇸 미국', wh:'3PL', title:'AMZ-US' },
-  JP: { label:'🇯🇵 일본', wh:'현지창고', title:'AMZ-JP' },
+  US: { label:'🇺🇸 미국',   wh:'3PL', title:'AMZ-US' },
+  CA: { label:'🇨🇦 캐나다', wh:'3PL', title:'AMZ-CA' },
+  UK: { label:'🇬🇧 영국',   wh:'3PL', title:'AMZ-UK' },
+  AU: { label:'🇦🇺 호주',   wh:'3PL', title:'AMZ-AU' },
+  AE: { label:'🇦🇪 UAE',    wh:'3PL', title:'AMZ-AE' },
+};
+
+// COUNTRY_META 와 키가 1:1 이어야 한다 — loadG()/resetAll() 이 이걸로 국가를 만든다.
+const DEFAULTS = {
+  US: US_DEFAULT,
+  CA: newMarket(),
+  UK: newMarket(),
+  AU: newMarket(),
+  AE: newMarket(),
 };
 
 let G = loadG();
@@ -226,9 +250,27 @@ let EDIT_ON = false;
 let EDIT_PW = sessionStorage.getItem('inv_edit_pw') || '';
 let SYNC_MSG = SHARED ? '동기화 중…' : '로컬 모드';
 
+function blankData(){
+  const d = {};
+  for(const c of Object.keys(COUNTRY_META)) d[c] = JSON.parse(JSON.stringify(DEFAULTS[c]));
+  return d;
+}
+// 저장된 국가만 덮어쓴다. 그래서 (1) 새로 추가된 국가는 기본값을 얻고,
+// (2) COUNTRY_META 에서 빠진 국가의 옛 데이터는 조용히 버려지고,
+// (3) 마지막으로 보던 국가가 사라졌으면 US 로 돌아간다.
 function loadG(){
-  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const g = JSON.parse(raw); if(g.data && g.data.US) return g; } }catch(e){}
-  return { country:'US', data:{ US: JSON.parse(JSON.stringify(US_DEFAULT)), JP: JSON.parse(JSON.stringify(JP_DEFAULT)) } };
+  const g = { country:'US', data: blankData() };
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      if(saved && saved.data){
+        for(const c of Object.keys(COUNTRY_META)) if(saved.data[c]) g.data[c] = saved.data[c];
+        if(COUNTRY_META[saved.country]) g.country = saved.country;
+      }
+    }
+  }catch(e){}
+  return g;
 }
 function setCountry(c){ G.country=c; S=G.data[c]; localStorage.setItem(LS_KEY, JSON.stringify(G)); render(); sheetLoad(); }
 
@@ -421,9 +463,15 @@ function renderHeader(){
   document.getElementById('syncLine').textContent = (SHARED?'공유 모드 · ':'로컬 모드 (이 브라우저에만 저장) · ') + SYNC_MSG;
   const three=Number(S.settings.threePL)||0;
   document.getElementById('modeTag').textContent = three===0?'FBA 직행':'FBA + '+COUNTRY_META[G.country].wh+' '+three+'개월';
+  // 신설 국가는 행사일이 비어 있다 — 그대로 계산하면 'D-NaN' 이 뜬다.
   const pb=new Date(S.settings.pbdd+'T00:00:00');
-  const dd=Math.ceil((pb-today())/86400000);
-  document.getElementById('ddayTag').textContent = (S.settings.eventLabel||'행사')+' '+(dd>=0?'D-'+dd:'D+'+(-dd));
+  const label=S.settings.eventLabel||'행사';
+  if(S.settings.pbdd && !isNaN(pb)){
+    const dd=Math.ceil((pb-today())/86400000);
+    document.getElementById('ddayTag').textContent = label+' '+(dd>=0?'D-'+dd:'D+'+(-dd));
+  } else {
+    document.getElementById('ddayTag').textContent = label+'일 미설정';
+  }
 
 }
 
@@ -703,7 +751,7 @@ function importJSON(inp){
 function resetAll(){
   if(!guard()) return;
   if(!confirm(G.country+' 데이터를 초기값으로 되돌릴까요? 되돌릴 수 없습니다.')) return;
-  G.data[G.country]=JSON.parse(JSON.stringify(G.country==='US'?US_DEFAULT:JP_DEFAULT));
+  G.data[G.country]=JSON.parse(JSON.stringify(DEFAULTS[G.country]));
   S=G.data[G.country]; save(); render();
 }
 

@@ -1,6 +1,6 @@
 # 재고 관제 대시보드 (Amazon FBA + 3PL)
 
-아마존 US/JP 재고 운영 대시보드. **단일 파일 웹앱** (`index.html`) — 빌드 없음, 프레임워크 없음, Vercel 정적 배포.
+아마존 US/CA/UK/AU/AE 재고 운영 대시보드. **단일 파일 웹앱** (`index.html`) — 빌드 없음, 프레임워크 없음, Vercel 정적 배포.
 
 ## 배포
 
@@ -31,10 +31,26 @@ DOM을 스텁한 헤드리스 테스트. CSV 파서, 계산 로직(calcRow), 6�
 
 ```js
 SUPABASE_URL / SUPABASE_ANON_KEY   // 비우면 로컬 모드 (localStorage만)
-SHEET = { US:{targets, data}, JP:{...} }  // 기본값은 /api/sheet 프록시 경로.
-                                          // 공개 게시 CSV URL을 직접 넣어도 동작한다.
-                                          // 비우면 해당 탭이 웹 직접 입력 모드로 폴백
+SHEET = { US:{targets, data}, CA:{...}, ... }  // 기본값은 /api/sheet 프록시 경로.
+                                              // 공개 게시 CSV URL을 직접 넣어도 동작한다.
+                                              // 비우면 해당 탭이 웹 직접 입력 모드로 폴백
+COUNTRY_META = { US, CA, UK, AU, AE }         // 국가 탭의 원천. 키를 추가하면 버튼이 생긴다.
+DEFAULTS     = { US, CA, UK, AU, AE }         // COUNTRY_META 와 키가 1:1 이어야 한다
 ```
+
+### 국가 추가·제거
+
+`COUNTRY_META`에 키를 넣고 `DEFAULTS`에 같은 키로 초기 상태를 넣으면 끝이다 —
+헤더 버튼, 상태 슬롯, `/api/sheet?country=` 파라미터가 모두 이 두 객체에서 파생된다.
+`api/sheet.mjs`는 `SHEET_ID_${country}`를 그대로 조회하므로 손댈 필요가 없다.
+
+`loadG()`는 **저장된 국가만 덮어쓴다.** 그래서 새 국가는 기본값을 얻고,
+`COUNTRY_META`에서 빠진 국가의 옛 localStorage 데이터는 조용히 버려지며,
+마지막으로 보던 국가가 사라졌으면 US로 돌아간다. 국가를 지울 때 마이그레이션 코드가 따로 필요 없다.
+
+신설 시장은 `newMarket()`으로 만든다 — `threePL:0`(FBA 단일 모드), 제품·Pipeline 비어 있고
+행사일(`pbdd`)도 비어 있다. **물류 수치는 US 값을 물려받은 자리표시자다**: 실제 해상 리드타임은
+시장마다 다르므로 운영 전에 '설정' 탭에서 국가별로 조정해야 한다.
 
 ### Vercel 환경변수 (`/api/sheet` 전용)
 
@@ -42,7 +58,7 @@ SHEET = { US:{targets, data}, JP:{...} }  // 기본값은 /api/sheet 프록시 �
 |---|---|
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | 이 주소로 시트를 **뷰어 공유**해야 읽힌다 |
 | `GOOGLE_PRIVATE_KEY` | 서비스 계정 비공개 키 (`\n` 이스케이프 형태 허용) |
-| `SHEET_ID_US` / `SHEET_ID_JP` | 스프레드시트 ID (URL의 `/d/` 와 `/edit` 사이) |
+| `SHEET_ID_<국가코드>` | 스프레드시트 ID (URL의 `/d/` 와 `/edit` 사이). 예: `SHEET_ID_US`, `SHEET_ID_CA` |
 | `SHEET_TAB_TARGETS` / `SHEET_TAB_DATA` | (선택) 탭 이름이 기본값과 다를 때만 |
 
 `api/sheet.mjs`는 **의존성이 없다** — JWT를 `node:crypto`로 직접 서명하므로
@@ -56,14 +72,14 @@ package.json도 빌드 스텝도 생기지 않는다. 이 성질을 깨뜨리지
 ### 상태 구조
 
 ```js
-G = { country: 'US'|'JP', data: { US: S, JP: S } }   // localStorage 'inv_multi_v1'
+G = { country: 'US'|'CA'|'UK'|'AU'|'AE', data: { US: S, CA: S, ... } }   // localStorage 'inv_multi_v1'
 S = { settings, coverage[9], products[], pipeline[], updated }
 product = { name, sku, asin, targets[9], s7, d30, fba, pl3 }   // sku == asin (키는 ASIN)
 pipeline row = { date, sku(=asin), qty, mode(해상|항공|특송), dest('FBA'|'3PL'), eta, status(이동중|입고완료|취소), memo }
 ```
 
 - 월 그리드: `MONTHS` = 2026-05 ~ 2027-01 (9칸) **고정**. 2027년 2월 이후 사용하려면 롤링 구조로 개편 필요 (알려진 TODO).
-- `dest` 값은 국가 무관 `'FBA'`/`'3PL'` 고정 (JP는 라벨만 '현지창고'로 표시).
+- `dest` 값은 국가 무관 `'FBA'`/`'3PL'` 고정. 창고 라벨은 `COUNTRY_META[].wh` 로만 바뀐다.
 - Dashboard 집계는 **목적지+상태만** 본다 (운송수단은 기록용).
 
 ## 핵심 계산 로직 — "익월 1일 착지" (v4)
@@ -106,7 +122,7 @@ IMPORTRANGE 승인은 시트에 저장되며 구글이 서버측에서 평가한
 
 ## 히스토리 / 관련 산출물
 
-엑셀 원본 템플릿(동일 로직): 재고_대시보드_템플릿_RAW.xlsx (US) / 재고_대시보드_일본_RAW.xlsx (JP).
+엑셀 원본 템플릿(동일 로직): 재고_대시보드_템플릿_RAW.xlsx (US).
 현재 index.html에는 PDRN 스킨케어 US 데이터가 폴백 기본값(US_DEFAULT)으로 심어져 있음 — 시트 연동 후에는 시트가 진실.
 
 ## 알려진 TODO
