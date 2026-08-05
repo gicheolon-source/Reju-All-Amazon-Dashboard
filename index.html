@@ -668,9 +668,9 @@ function vSet(){
     <td class="txt" style="font-size:12px;color:var(--sub);white-space:normal">${hint}</td></tr>`;
   let h=`<div class="card"><div class="card-h"><h2>운영 파라미터</h2></div><div class="card-b twrap"><table>
   <thead><tr><th style="width:220px">항목</th><th style="width:120px">값</th><th>설명</th></tr></thead><tbody>
-  ${row('★ ${COUNTRY_META[G.country].wh} 보관 월수','threePL',0.5,'FBA 확보분 이후 3PL 추가 보유 개월수. <b>0 = 3PL 미운영</b> → FBA가 해상리드+버퍼를 직접 커버하는 단일 모드로 전체 자동 전환')}
-  ${row('해상 리드타임 (개월)','seaLead',0.5,'한국 → 미국 해상 운송')}
-  ${row('항공 리드타임 (개월)','airLead',0.5,'한국 → 미국 항공 운송')}
+  ${row(`★ ${COUNTRY_META[G.country].wh} 보관 월수`,'threePL',0.5,'FBA 확보분 이후 3PL 추가 보유 개월수. <b>0 = 3PL 미운영</b> → FBA가 해상리드+버퍼를 직접 커버하는 단일 모드로 전체 자동 전환')}
+  ${row('해상 리드타임 (개월)','seaLead',0.5,'한국 → 현지 해상 운송')}
+  ${row('항공 리드타임 (개월)','airLead',0.5,'한국 → 현지 항공 운송')}
   ${row('3PL→FBA 리드타임 (주)','plToFbaWeeks',1,'3PL 출고 → FC 입고 완료. Q4 후반 3~4주로 지연 가능')}
   ${row('발주 버퍼 (개월)','buffer',0.5,'3PL 미운영 시 리드타임에 더하는 안전 여유')}
   <tr><td class="txt">PBDD 행사일</td><td><input type="date" value="${s.pbdd}" onchange="setS('pbdd',this.value)"></td><td class="txt" style="font-size:12px;color:var(--sub)">헤더 D-day의 기준일</td></tr>
