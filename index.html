@@ -772,8 +772,10 @@ function render(){
   document.getElementById('main').innerHTML='<div class="view">'+v()+'</div>';
 }
 render();
-sbLoad();
-sheetLoad();
+// 순서가 중요하다. sbLoad() 는 G.data[국가] 를 통째로 갈아끼우므로,
+// 둘을 병렬로 띄우면 늦게 끝난 쪽이 이긴다 — Supabase 에 저장된 오래된 제품·목표가
+// 방금 시트에서 읽은 값을 덮어쓸 수 있다. 시트가 진실이므로 항상 나중에 실행한다.
+sbLoad().then(sheetLoad);
 </script>
 </body>
 </html>
