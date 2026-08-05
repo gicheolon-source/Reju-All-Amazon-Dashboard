@@ -127,7 +127,7 @@ footer{max-width:1280px;margin:0 auto;padding:6px 20px 30px;font-size:11.5px;col
 <header>
   <div class="man-top">
     <div>
-      <div class="man-id">PDRN SKINCARE / AMZ-US / INVENTORY CONTROL</div>
+      <div class="man-id">AMZ / INVENTORY CONTROL</div>
       <div class="man-title">재고 관제 대시보드 <small>익월 1일 착지 기준 · FBA + 3PL</small></div>
     </div>
     <div class="man-right">
@@ -229,11 +229,11 @@ const newMarket = (over={}) => ({
 });
 
 const COUNTRY_META = {
-  US: { label:'🇺🇸 미국',   wh:'3PL', title:'AMZ-US' },
-  CA: { label:'🇨🇦 캐나다', wh:'3PL', title:'AMZ-CA' },
-  UK: { label:'🇬🇧 영국',   wh:'3PL', title:'AMZ-UK' },
-  AU: { label:'🇦🇺 호주',   wh:'3PL', title:'AMZ-AU' },
-  AE: { label:'🇦🇪 UAE',    wh:'3PL', title:'AMZ-AE' },
+  US: { label:'🇺🇸 미국',   wh:'3PL' },
+  CA: { label:'🇨🇦 캐나다', wh:'3PL' },
+  UK: { label:'🇬🇧 영국',   wh:'3PL' },
+  AU: { label:'🇦🇺 호주',   wh:'3PL' },
+  AE: { label:'🇦🇪 아랍',   wh:'3PL' },
 };
 
 // COUNTRY_META 와 키가 1:1 이어야 한다 — loadG()/resetAll() 이 이걸로 국가를 만든다.
@@ -455,8 +455,6 @@ function planShip(p){ // ship(m) for m=3(8월)..7(12월); ship(3)=L(4) since L(3
 
 /* ================= header widgets ================= */
 function renderHeader(){
-  const meta = COUNTRY_META[G.country];
-  document.querySelector('.man-id').textContent = `PDRN SKINCARE / ${meta.title} / INVENTORY CONTROL`;
   document.getElementById('countrySeg').innerHTML = Object.keys(COUNTRY_META).map(c=>
     `<button class="${c===G.country?'on':''}" onclick="setCountry('${c}')">${COUNTRY_META[c].label}</button>`).join('');
   const eb = document.getElementById('editBtn');
