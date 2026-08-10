@@ -744,19 +744,39 @@ function acosDelta(cur,prev){
    같은 화면 안에서 지출이 몇 배씩 어긋난다. 그 불일치를 숨기지 않고 알린다. */
 function stCoverage(){
   const ids=D.weeks||[];
-  if(!ids.length||!D.cp.length)return '';
-  const have=ids.filter(id=>(META.weeks.find(w=>w.id===id)?.counts.st||0)>0);
+  if(!ids.length)return '';
+  const cnt=id=>META.weeks.find(w=>w.id===id)?.counts||{};
+  const loadCmd='npm run load'+(S.market==='CA'?':ca':'');
+  const dir='reports\\'+S.market.toLowerCase()+'\\';
+  const box=b=>`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">${b}</div></div>`;
+
+  /* 1순위: 캠페인 리포트 누락 — 상단 KPI 자체가 비거나 축소된다 */
+  const haveCp=ids.filter(id=>(cnt(id).cp||0)>0);
+  if(!haveCp.length) return box(`<b>상단 KPI가 $0 인 이유 — 이 기간의 캠페인 리포트가 없습니다</b>
+    <div class="hint" style="margin-top:6px">KPI(지출·매출·ACOS)는 캠페인 리포트가 총액 기준입니다. 지금은
+    서치텀·타겟팅·제품 리포트만 있어 아래 검색어 분석은 정상입니다.<br>
+    광고 콘솔에서 <b>캠페인 리포트</b>(전체 캠페인 유형 · 일~토 · 요약)를 뽑아
+    <b>${dir}</b> 에 넣고 <b>${loadCmd}</b> 를 실행하면 채워집니다.
+    복합 리포트에는 캠페인 총액이 안 담깁니다 — 별도로 뽑아야 합니다.</div>`);
+  if(haveCp.length<ids.length){
+    const miss=ids.filter(id=>!(cnt(id).cp>0)).map(id=>esc(String(META.weeks.find(w=>w.id===id).label).split(' – ')[0])).join(', ');
+    return box(`<b>상단 KPI는 이 기간 ${ids.length}주 중 ${haveCp.length}주만 반영합니다</b>
+      <div class="hint" style="margin-top:6px">캠페인 리포트가 없는 주차: <b>${miss}</b> —
+      해당 주차 캠페인 리포트를 <b>${dir}</b> 에 넣고 <b>${loadCmd}</b> 를 실행하세요.</div>`);
+  }
+
+  /* 2순위: 서치텀 누락 — 검색어 단위 분석만 영향 */
+  const have=ids.filter(id=>(cnt(id).st||0)>0);
   if(have.length===ids.length)return '';
-  const box=b=>`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">${b}
-    <div class="hint" style="margin-top:6px">해당 주차 서치텀 리포트를 <b>reports/</b> 에 넣고 <b>npm run load</b> 를 실행하면 채워집니다.</div></div></div>`;
   const missing=ids.length-have.length;
+  const guide=`<div class="hint" style="margin-top:6px">해당 주차 서치텀 리포트를 <b>${dir}</b> 에 넣고 <b>${loadCmd}</b> 를 실행하면 채워집니다.</div>`;
   if(!have.length) return box(`<b>이 기간에는 서치텀 리포트가 없습니다 — 검색어 단위 분석만 비어 있습니다</b>
     <div class="hint" style="margin-top:6px">상단 KPI와 캠페인·포트폴리오 탭은 캠페인 리포트 기준이라 정상입니다.
-    비는 것은 <b>서치텀 판정 요약 · 지출 낭비/효율 TOP · 서치텀 탭</b>입니다.</div>`);
+    비는 것은 <b>서치텀 판정 요약 · 지출 낭비/효율 TOP · 서치텀 탭</b>입니다.</div>`+guide);
   const lbl=have.map(id=>esc(String(META.weeks.find(w=>w.id===id).label).split(' – ')[0])).join(', ');
   return box(`<b>검색어 단위 분석은 이 기간 ${ids.length}주 중 ${have.length}주만 반영합니다</b>
     <div class="hint" style="margin-top:6px">서치텀 리포트가 있는 주차는 <b>${lbl}</b> 뿐입니다 (${missing}주 누락).
-    상단 KPI는 캠페인 기준이라 ${ids.length}주 전체가 반영되니, 아래 검색어 표와 기간이 다릅니다.</div>`);
+    상단 KPI는 캠페인 기준이라 ${ids.length}주 전체가 반영되니, 아래 검색어 표와 기간이 다릅니다.</div>`+guide);
 }
 function renderOverview(){
   const st=byPf(D.st,ovPf), cp=byPf(D.cp,ovPf);
@@ -822,7 +842,7 @@ function renderOverview(){
             <span class="chip scale">스케일업 ${vc.scale}</span><span class="chip warn">입찰 인하 ${vc.warn}</span>
             <span class="chip ok">적정 ${vc.ok}</span>
             <span class="chip watch">관찰 ${vc.watch}</span></div>
-          <div class="hint">주문 없이 소진된 지출(제외 후보 합계): <b style="color:var(--bad)">${money(negCost)}</b> — 전체 지출의 ${pct(negCost/(a.cost||1)*100)}</div>
+          <div class="hint">주문 없이 소진된 지출(제외 후보 합계): <b style="color:var(--bad)">${money(negCost)}</b>${a.cost>0?` — 전체 지출의 ${pct(negCost/a.cost*100)}`:''}</div>
         </div></div>
     </div>
     ${!ovPf?`<div class="card"><div class="card-head"><h2>포트폴리오 비교</h2><a href="#/portfolio" class="btn sm" style="text-decoration:none">포트폴리오 관리 →</a></div>
