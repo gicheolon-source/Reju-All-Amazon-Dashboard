@@ -10,8 +10,10 @@
     "dev": "node scripts/serve.mjs",
     "init-db": "node scripts/init-db.mjs",
     "load": "node scripts/load.mjs",
+    "load:ca": "node scripts/load.mjs --market=ca",
     "ingest": "node scripts/ingest.mjs",
     "verify": "node scripts/verify.mjs",
+    "verify:ca": "node scripts/verify.mjs --market=ca",
     "update": "node scripts/ingest.mjs && node scripts/verify.mjs"
   },
   "dependencies": {

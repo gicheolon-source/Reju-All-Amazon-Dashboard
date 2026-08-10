@@ -3,23 +3,28 @@
    비용 커버리지가 100% 를 넘으면 중복 적재, 너무 낮으면 리포트 누락이다. */
 import '../lib/env.mjs';
 import { db } from '../lib/db.mjs';
+import { MARKETS, cleanMarket } from '../lib/sources.mjs';
+
+const MARKET = cleanMarket(process.argv.find(a => a.startsWith('--market='))?.split('=')[1]);
+console.log(`\n마켓: ${MARKET} (${MARKETS[MARKET].account})` +
+  (MARKET === 'US' ? '   — 캐나다는 --market=ca' : ''));
 
 const c = db();
 const TABLES = ['campaigns', 'search_terms', 'targets', 'products'];
 
 const byTable = {};
 for (const t of TABLES) {
-  const r = await c.execute(
+  const r = await c.execute({ sql:
     `SELECT week_start, COUNT(*) rows, SUM(clk) clk, SUM(cost) cost, SUM(pur) pur, SUM(sales) sales
-     FROM ${t} GROUP BY week_start ORDER BY week_start`);
+     FROM ${t} WHERE market = ? GROUP BY week_start ORDER BY week_start`, args: [MARKET] });
   byTable[t] = new Map(r.rows.map(x => [x.week_start, x]));
 }
 
 const weeks = [...new Set(TABLES.flatMap(t => [...byTable[t].keys()]))].sort();
-if (!weeks.length) { console.log('적재된 데이터가 없습니다. npm run ingest 를 먼저 실행하세요.'); process.exit(0); }
+if (!weeks.length) { console.log('이 마켓에 적재된 데이터가 없습니다. npm run load 를 먼저 실행하세요.'); process.exit(0); }
 
 /* 행사주로 지정된 주차는 광고비 급등이 정상이므로 WoW 경고를 띄우지 않는다 */
-const meta = await c.execute('SELECT week_start, is_event, note FROM weeks');
+const meta = await c.execute({ sql: 'SELECT week_start, is_event, note FROM weeks WHERE market = ?', args: [MARKET] });
 const events = new Map(meta.rows.map(r => [r.week_start, { on: !!r.is_event, note: r.note }]));
 
 const money = n => '$' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -70,7 +75,7 @@ for (const w of weeks) {
 }
 
 const log = await c.execute(
-  `SELECT ran_at, source, rows_in, rows_kept, rows_skipped FROM ingest_log ORDER BY id DESC LIMIT 5`);
+  { sql: `SELECT ran_at, source, rows_in, rows_kept, rows_skipped FROM ingest_log WHERE market = ? ORDER BY id DESC LIMIT 5`, args: [MARKET] });
 if (log.rows.length) {
   console.log('\n최근 적재 기록\n');
   for (const r of log.rows)

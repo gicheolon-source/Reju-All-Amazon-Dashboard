@@ -2,18 +2,19 @@
    시트는 셀 1,000만 개 한도가 있어 서치텀 같은 대용량 리포트를 담을 수 없다.
 
    사용법:
-     node scripts/load.mjs                        reports/ 폴더의 모든 CSV
-     node scripts/load.mjs a.csv b.csv            파일 지정
-     node scripts/load.mjs reports/2026-07        폴더 지정
+     node scripts/load.mjs                        reports/us/ 의 모든 CSV → US
+     node scripts/load.mjs --market=ca            reports/ca/ 의 모든 CSV → CA
+     node scripts/load.mjs a.csv b.csv            파일 지정 (마켓은 --market, 기본 US)
      node scripts/load.mjs --weeks=2026-07-19     특정 주차만
      node scripts/load.mjs --dry                  읽고 집계만, DB 쓰기 없음
 
+   마켓(US/CA)별로 폴더가 나뉜다 — 한 번의 실행은 한 마켓만 적재한다.
    리포트 종류(서치텀/타겟팅/캠페인/광고제품)는 헤더로 자동 판별한다.
-   같은 주차를 다시 넣으면 그 주차만 지우고 다시 넣으므로 몇 번 실행해도 결과가 같다. */
+   같은 주차를 다시 넣으면 그 마켓의 그 주차만 지우고 다시 넣으므로 몇 번 실행해도 결과가 같다. */
 import { ROOT } from '../lib/env.mjs';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, stat, mkdir } from 'node:fs/promises';
 import { join, extname, basename, resolve } from 'node:path';
-import { SOURCES, detectSource } from '../lib/sources.mjs';
+import { SOURCES, MARKETS, cleanMarket, detectSource } from '../lib/sources.mjs';
 import { readCsvAoa } from '../lib/csv.mjs';
 import { aggregate, merge, writeWeeks, report, HeaderError } from '../lib/aggregate.mjs';
 
@@ -22,6 +23,14 @@ const flag = n => args.find(a => a.startsWith(`--${n}=`))?.split('=').slice(1).j
 const weekFilter = flag('weeks')?.split(',').map(s => s.trim()).filter(Boolean);
 const dry = args.includes('--dry');
 const targets = args.filter(a => !a.startsWith('--'));
+
+const rawMarket = flag('market');
+if (rawMarket && cleanMarket(rawMarket) !== String(rawMarket).toUpperCase()) {
+  console.error(`✗ 알 수 없는 마켓 "${rawMarket}" — 가능한 값: ${Object.keys(MARKETS).join(', ')}`);
+  process.exit(1);
+}
+const MARKET = cleanMarket(rawMarket);
+const marketDir = join(ROOT, 'reports', MARKET.toLowerCase());
 
 const CSV = new Set(['.csv', '.tsv', '.txt']);
 
@@ -38,13 +47,28 @@ async function expand(p) {
   return out.sort();
 }
 
-const roots = targets.length ? targets : [join(ROOT, 'reports')];
+await mkdir(marketDir, { recursive: true });
+console.log(`마켓: ${MARKET} (${MARKETS[MARKET].account})`);
+
+/* 실수 방지: reports/ 바로 밑에 놓인 CSV 는 어느 마켓인지 알 수 없으므로 적재하지 않는다 */
+if (!targets.length) {
+  const stray = (await readdir(join(ROOT, 'reports'), { withFileTypes: true }).catch(() => []))
+    .filter(e => e.isFile() && CSV.has(extname(e.name).toLowerCase())).map(e => e.name);
+  if (stray.length) {
+    console.log(`\n⚠ reports/ 바로 밑에 CSV ${stray.length}개가 있습니다 — 마켓 폴더로 옮겨야 적재됩니다:`);
+    console.log(`    미국: reports\\us\\   캐나다: reports\\ca\\`);
+    stray.slice(0, 5).forEach(f => console.log(`    · ${f}`));
+  }
+}
+
+const roots = targets.length ? targets : [marketDir];
 const files = (await Promise.all(roots.map(expand))).flat();
 
 if (!files.length) {
   console.log(`\n적재할 CSV 가 없습니다.\n`);
   console.log(`  광고 콘솔에서 리포트를 CSV 로 내려받아 아래 폴더에 넣고 다시 실행하세요:`);
-  console.log(`    ${join(ROOT, 'reports')}\n`);
+  console.log(`    ${marketDir}\n`);
+  console.log(`  캐나다 리포트는 reports\\ca\\ 에 넣고 --market=ca 로 실행합니다 (npm run load:ca).\n`);
   console.log(`  ⚠ 리포트 생성 시 날짜 범위는 일요일~토요일, 단위는 요약(Summary) 으로 뽑아야 합니다.`);
   console.log(`    일별로 뽑으면 조각 기간이라 적재되지 않습니다.\n`);
   console.log(`  xlsx 파일은 엑셀에서 "다른 이름으로 저장 → CSV UTF-8" 로 변환해주세요.\n`);
@@ -94,7 +118,7 @@ for (const [name, results] of bySource) {
   const m = merge(results, src);
   report(m);
   if (dry) { console.log('   --dry: DB 쓰기 생략'); continue; }
-  const weeks = await writeWeeks(name, src, m, { detail: `CSV 파일 ${results.length}개` });
+  const weeks = await writeWeeks(name, src, m, { market: MARKET, detail: `CSV 파일 ${results.length}개` });
   console.log(`   ✓ ${src.table} 적재 완료 (${m.agg.size.toLocaleString()} 행, ${weeks.length} 주차)`);
 }
 

@@ -13,4 +13,9 @@ data/*.db-*
 _*.mjs
 _*.json
 reports/*
-!reports/.gitkeep
+!reports/us
+reports/us/*
+!reports/us/.gitkeep
+!reports/ca
+reports/ca/*
+!reports/ca/.gitkeep

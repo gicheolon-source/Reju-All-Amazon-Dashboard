@@ -32,7 +32,9 @@ npm run dev                    # http://localhost:3000
 |---|---|
 | `npm run dev` | 로컬 서버 (정적 + `/api` + 비밀번호 게이트) |
 | `npm run init-db` | `db/schema.sql` 적용 |
-| `npm run load` | **CSV 파일 → DB 직접 적재.** `reports/` 폴더를 읽는다. 경로·`--weeks=` ·`--dry` 지원 |
+| `npm run load` | **CSV → DB 직접 적재 (미국).** `reports/us/` 를 읽는다. 경로·`--weeks=`·`--dry` 지원 |
+| `npm run load:ca` | 캐나다 적재 — `reports/ca/` 를 읽는다 |
+| `npm run verify:ca` | 캐나다 검증 |
 | `npm run ingest` | 시트 → DB 적재. `--only=search_terms` `--weeks=2026-07-19` `--dry` 지원 |
 | `npm run verify` | 주차별 커버리지·KPI·경고 리포트 |
 | `npm run update` | ingest + verify |
@@ -77,8 +79,11 @@ npm run dev                    # http://localhost:3000
 ## CSV 직접 적재
 
 1. 광고 콘솔에서 리포트를 **CSV** 로 내려받는다
-2. `reports/` 폴더에 넣는다 (하위 폴더도 재귀 탐색, 여러 파일 동시 가능)
-3. `npm run load`
+2. 마켓 폴더에 넣는다 — 미국 `reports/us/`, 캐나다 `reports/ca/` (하위 폴더 재귀 탐색)
+3. `npm run load` (미국) / `npm run load:ca` (캐나다)
+
+마켓(US/CA)은 DB 의 `market` 열로 분리되고 대시보드 상단 토글로 전환한다.
+`reports/` 바로 밑의 CSV 는 어느 마켓인지 알 수 없어 적재하지 않는다.
 
 리포트 종류는 헤더로 자동 판별한다 (`Search term`/`Customer search term` → 서치텀,
 `Advertised ASIN` → 광고제품, `Targeting` → 타겟팅, `Ad product` → 캠페인).

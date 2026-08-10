@@ -35,8 +35,15 @@ nav a:hover{color:#fff}
 /* pill 은 내용에 따라 폭이 바뀐다. 캘린더 버튼을 오른쪽 끝에 두어야
    pill 폭이 변해도 버튼 위치가 고정된다 (오른쪽 정렬 컨테이너이므로). */
 .topbar-right{margin-left:auto}
+.mkt-seg{order:0}
 .data-pill{order:1}
 .cal-wrap{order:2}
+/* ── 마켓(US/CA) 전환 ── */
+.mkt-seg{display:flex;border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden}
+.mkt-seg button{padding:5px 11px;font-size:12px;font-weight:700;font-family:var(--mono);letter-spacing:.4px;
+  background:transparent;color:#9A96A8;border:0}
+.mkt-seg button:hover{color:#fff}
+.mkt-seg button.on{background:var(--accent);color:#171C26}
 /* 로딩은 상단 얇은 바로 알린다 — 텍스트를 갈아끼우면 레이아웃이 흔들린다 */
 .load-bar{position:fixed;top:0;left:0;right:0;height:2px;z-index:100;overflow:hidden;opacity:0;transition:opacity .18s;pointer-events:none}
 body.loading .load-bar{opacity:1}
@@ -186,6 +193,7 @@ a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--inf
     <a href="#/data" data-r="data">데이터·설정</a>
   </nav>
   <div class="topbar-right" style="display:flex;align-items:center;gap:10px">
+    <div class="mkt-seg" id="mktSeg"></div>
     <div class="cal-wrap">
       <button id="calBtn" class="cal-btn" onclick="toggleCal(event)">기간 선택 ▾</button>
       <div id="calPop" class="cal-pop" hidden></div>
@@ -201,8 +209,8 @@ a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--inf
 /* ═══════════════════ State ═══════════════════ */
 const LS_KEY='amzAdsLab.v4.rejuall';
 let D={st:[],tg:[],cp:[],ap:[],period:'',account:'',prev:null,combo:null,isEvent:false,notes:[]};
-let META={account:'',weeks:[]};   // /api/weeks 응답
-let S={ pfCfg:{}, asinNames:{},
+let META={account:'',weeks:[],markets:[]};   // /api/weeks 응답 (현재 마켓 기준)
+let S={ market:'US', pfCfg:{}, asinNames:{},
         /* targetAcos = 이슈 기준(상한), acosLo = 적정 하한. 40~60% 를 적정으로 본다. */
         settings:{targetAcos:60, acosLo:40, negClicks:10, negSpend:10, harvestOrders:3, currency:'$'},
         topF:{waste:'', win:'clk10'},   // 개요 낭비/효율 TOP 최소 기준
@@ -297,8 +305,10 @@ function expand(E){
 }
 const _cache=new Map();
 function fetchWindow(weeks){
-  const k=weeks.join(',');
-  if(!_cache.has(k)) _cache.set(k, api('/api/data?weeks='+encodeURIComponent(k)).then(expand).catch(e=>{_cache.delete(k);throw e;}));
+  /* 캐시 키에 마켓을 포함한다 — US 로 본 기간을 CA 전환 후 재사용하면 안 된다 */
+  const k=S.market+'|'+weeks.join(',');
+  if(!_cache.has(k)) _cache.set(k,
+    api('/api/data?market='+S.market+'&weeks='+encodeURIComponent(weeks.join(','))).then(expand).catch(e=>{_cache.delete(k);throw e;}));
   return _cache.get(k);
 }
 
@@ -456,17 +466,37 @@ function setActive(id){
   if(calOpen)renderCal();
   return applySel();
 }
+/* 마켓 토글 — 목록은 서버(META.markets)가 준다 */
+function renderMktSeg(){
+  const el=document.getElementById('mktSeg');
+  const list=META.markets?.length?META.markets:[{id:'US',label:'US'},{id:'CA',label:'CA'}];
+  el.innerHTML=list.map(m=>`<button class="${m.id===S.market?'on':''}" onclick="setMarket('${m.id}')">${m.label}</button>`).join('');
+}
+async function setMarket(m){
+  if(m===S.market)return;
+  S.market=m; save();
+  /* 검색어 집계·유형 캐시는 마켓 데이터에 묶여 있다 */
+  clearTermsMemo(); clearKindCache();
+  SEL={from:'',to:''}; calMonth=''; calAnchor=null; cmpData=null; ovCmp='auto'; ovPf='';
+  await boot();
+}
 async function boot(){
   try{
-    META=await api('/api/weeks');
+    META=await api('/api/weeks?market='+S.market);
     D.account=META.account;
     document.getElementById('brandSub').textContent=META.account;
+    renderMktSeg();
     if(!META.weeks.length){
-      view.innerHTML=`<div class="card"><div class="card-head"><h2>데이터가 없습니다</h2></div><div class="card-body">
-        <div class="hint">DB에 적재된 주차가 없습니다. 시트를 채운 뒤 <b>npm run update</b> 를 실행해주세요.</div></div></div>`;
+      D.st=[];D.tg=[];D.cp=[];D.ap=[];D.weeks=[];D.prev=null;
+      document.getElementById('calBtn').innerHTML='기간 선택 ▾';
+      document.getElementById('dataPill').textContent='데이터 없음';
+      view.innerHTML=`<div class="card"><div class="card-head"><h2>${esc(META.account)} — 데이터가 없습니다</h2></div><div class="card-body">
+        <div class="hint" style="line-height:1.9">이 마켓에 적재된 주차가 없습니다.<br>
+        광고 콘솔에서 리포트 CSV 를 내려받아 <b>reports\\${S.market.toLowerCase()}\\</b> 폴더에 넣고
+        <b>npm run load${S.market==='CA'?':ca':''}</b> 를 실행해주세요.</div></div></div>`;
       return;
     }
-    /* 저장된 선택이 지금 DB에도 있으면 복원, 없으면 서치텀이 있는 가장 최근 주차로
+    /* 저장된 선택이 이 마켓 DB에도 있으면 복원, 없으면 서치텀이 있는 가장 최근 주차로
        시작한다 — 캠페인만 있는 주차는 상단 KPI 가 비어 보인다 */
     const s=S.sel;
     if(s?.from && weekById(s.from) && weekById(s.to)) SEL={from:s.from,to:s.to};

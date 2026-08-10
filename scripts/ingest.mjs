@@ -56,7 +56,8 @@ for (const [name, src] of Object.entries(SOURCES)) {
   if (dry) { console.log('   --dry: DB 쓰기 생략'); continue; }
   if (!result.agg.size) continue;
 
-  const weeks = await writeWeeks(name, src, result, { detail: `시트 "${title}" gid ${src.gid}` });
+  /* 구글 시트 연동은 미국 계정 시트에 하드코딩되어 있다 — 항상 US 로 적재 */
+  const weeks = await writeWeeks(name, src, result, { market: 'US', detail: `시트 "${title}" gid ${src.gid}` });
   console.log(`   ✓ ${src.table} 적재 완료 (${result.agg.size} 행, ${weeks.length} 주차)`);
   wrote = true;
 }
