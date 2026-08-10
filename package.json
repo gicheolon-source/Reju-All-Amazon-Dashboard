@@ -11,9 +11,11 @@
     "init-db": "node scripts/init-db.mjs",
     "load": "node scripts/load.mjs",
     "load:ca": "node scripts/load.mjs --market=ca",
+    "load:au": "node scripts/load.mjs --market=au",
     "ingest": "node scripts/ingest.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:ca": "node scripts/verify.mjs --market=ca",
+    "verify:au": "node scripts/verify.mjs --market=au",
     "update": "node scripts/ingest.mjs && node scripts/verify.mjs"
   },
   "dependencies": {

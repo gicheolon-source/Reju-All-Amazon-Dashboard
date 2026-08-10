@@ -493,7 +493,7 @@ async function boot(){
       view.innerHTML=`<div class="card"><div class="card-head"><h2>${esc(META.account)} — 데이터가 없습니다</h2></div><div class="card-body">
         <div class="hint" style="line-height:1.9">이 마켓에 적재된 주차가 없습니다.<br>
         광고 콘솔에서 리포트 CSV 를 내려받아 <b>reports\\${S.market.toLowerCase()}\\</b> 폴더에 넣고
-        <b>npm run load${S.market==='CA'?':ca':''}</b> 를 실행해주세요.</div></div></div>`;
+        <b>npm run load${S.market==='US'?'':':'+S.market.toLowerCase()}</b> 를 실행해주세요.</div></div></div>`;
       return;
     }
     /* 저장된 선택이 이 마켓 DB에도 있으면 복원, 없으면 서치텀이 있는 가장 최근 주차로
@@ -746,7 +746,7 @@ function stCoverage(){
   const ids=D.weeks||[];
   if(!ids.length)return '';
   const cnt=id=>META.weeks.find(w=>w.id===id)?.counts||{};
-  const loadCmd='npm run load'+(S.market==='CA'?':ca':'');
+  const loadCmd='npm run load'+(S.market==='US'?'':':'+S.market.toLowerCase());
   const dir='reports\\'+S.market.toLowerCase()+'\\';
   const box=b=>`<div class="card" style="border-color:var(--warn);background:var(--warn-soft)"><div class="card-body">${b}</div></div>`;
 

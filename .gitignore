@@ -19,3 +19,6 @@ reports/us/*
 !reports/ca
 reports/ca/*
 !reports/ca/.gitkeep
+!reports/au
+reports/au/*
+!reports/au/.gitkeep
