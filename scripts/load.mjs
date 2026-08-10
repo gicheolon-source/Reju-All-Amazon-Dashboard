@@ -56,7 +56,7 @@ if (!targets.length) {
     .filter(e => e.isFile() && CSV.has(extname(e.name).toLowerCase())).map(e => e.name);
   if (stray.length) {
     console.log(`\n⚠ reports/ 바로 밑에 CSV ${stray.length}개가 있습니다 — 마켓 폴더로 옮겨야 적재됩니다:`);
-    console.log(`    미국: reports\\us\\   캐나다: reports\\ca\\`);
+    console.log('    ' + Object.keys(MARKETS).map(m => `${m}: reports\\${m.toLowerCase()}\\`).join('   '));
     stray.slice(0, 5).forEach(f => console.log(`    · ${f}`));
   }
 }
@@ -68,7 +68,8 @@ if (!files.length) {
   console.log(`\n적재할 CSV 가 없습니다.\n`);
   console.log(`  광고 콘솔에서 리포트를 CSV 로 내려받아 아래 폴더에 넣고 다시 실행하세요:`);
   console.log(`    ${marketDir}\n`);
-  console.log(`  캐나다 리포트는 reports\\ca\\ 에 넣고 --market=ca 로 실행합니다 (npm run load:ca).\n`);
+  console.log('  다른 마켓: ' + Object.keys(MARKETS).filter(m => m !== 'US')
+    .map(m => `npm run load:${m.toLowerCase()}`).join(' · ') + '\n');
   console.log(`  ⚠ 리포트 생성 시 날짜 범위는 일요일~토요일, 단위는 요약(Summary) 으로 뽑아야 합니다.`);
   console.log(`    일별로 뽑으면 조각 기간이라 적재되지 않습니다.\n`);
   console.log(`  xlsx 파일은 엑셀에서 "다른 이름으로 저장 → CSV UTF-8" 로 변환해주세요.\n`);

@@ -12,10 +12,12 @@
     "load": "node scripts/load.mjs",
     "load:ca": "node scripts/load.mjs --market=ca",
     "load:au": "node scripts/load.mjs --market=au",
+    "load:uk": "node scripts/load.mjs --market=uk",
     "ingest": "node scripts/ingest.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:ca": "node scripts/verify.mjs --market=ca",
     "verify:au": "node scripts/verify.mjs --market=au",
+    "verify:uk": "node scripts/verify.mjs --market=uk",
     "update": "node scripts/ingest.mjs && node scripts/verify.mjs"
   },
   "dependencies": {
