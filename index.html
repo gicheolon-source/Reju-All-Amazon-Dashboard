@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AMZ Ads Lab — Dr. Reju-All</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 :root{
   --ink:#16181D; --ink2:#3A3D45; --muted:#8A867C;
@@ -16,10 +15,12 @@
   --warn:#B7791F; --warn-soft:#FBF3DF;
   --info:#3A6EA5; --info-soft:#E8EFF7;
   --navy:#171C26;
-  --mono:'IBM Plex Mono',monospace;
+  /* --mono 는 과거 숫자용 모노 폰트 변수 — Pretendard 로 통일하고 숫자 정렬은
+     body 의 tabular-nums 가 담당한다. 참조가 수십 곳이라 변수명은 유지. */
+  --mono:'Pretendard Variable',Pretendard,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'IBM Plex Sans KR',sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,'Noto Sans KR',sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
 button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit;font-size:13px}
 .topbar{background:var(--navy);color:#EDEBE4;position:sticky;top:0;z-index:50}
@@ -105,7 +106,7 @@ th.l,td.l{text-align:left}
 th:hover{color:var(--ink)}
 th .arr{color:var(--accent);font-family:var(--mono)}
 td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
-td.l{font-family:'IBM Plex Sans KR';font-size:13px}
+td.l{font-size:13px}
 tr:hover td{background:#FBFAF6}
 .num-good{color:var(--good);font-weight:600}
 .num-bad{color:var(--bad);font-weight:600}
@@ -117,7 +118,7 @@ tr:hover td{background:#FBFAF6}
 @media (max-width:900px){.trunc{max-width:22ch}.trunc.sm{max-width:18ch}}
 .dim{color:var(--muted);font-size:11px}
 a.asin{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--info)}
-.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;font-family:'IBM Plex Sans KR';line-height:1.6}
+.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;line-height:1.6}
 .chip.scale{background:var(--good-soft);color:var(--good)}
 .chip.neg{background:var(--bad-soft);color:var(--bad)}
 .chip.harvest{background:var(--info-soft);color:var(--info)}
