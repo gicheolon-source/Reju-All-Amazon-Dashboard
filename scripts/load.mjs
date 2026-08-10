@@ -120,19 +120,28 @@ for (const f of files) {
 if (failed) process.exitCode = 1;
 if (!bySource.size) { console.log('\n적재할 데이터가 없습니다.'); process.exit(process.exitCode ?? 0); }
 
-/* 2단계: 종류별로 합쳐서 한 번에 적재 (같은 주차가 여러 파일에 나뉘어 있어도 합산된다) */
+/* 2단계: 종류별로 합쳐서 한 번에 적재 (같은 주차가 여러 파일에 나뉘어 있어도 합산된다).
+   전용 리포트(덮어씀)와 복합 유래(fillOnly)는 반드시 따로 병합·적재한다 —
+   섞어 합치면 같은 주차의 캠페인 총액이 전용+복합으로 이중 집계된다.
+   전용을 먼저 쓰고, 복합은 그 뒤에 남은 빈 주차만 채운다. */
 for (const [name, results] of bySource) {
   const src = SOURCES[name];
-  console.log(`\n━━ ${src.label} (${name}) ━━  파일 ${results.length}개`);
-  const m = merge(results, src);
-  const fillOnly = results.every(r => r.fillOnly);
-  report(m);
-  if (dry) { console.log('   --dry: DB 쓰기 생략' + (fillOnly ? ' (빈 주차만 채움)' : '')); continue; }
-  const weeks = await writeWeeks(name, src, m,
-    { market: MARKET, fillOnly, detail: `CSV 파일 ${results.length}개${fillOnly ? ' (복합→빈 주차만)' : ''}` });
-  console.log(weeks.length
-    ? `   ✓ ${src.table} 적재 완료 (${m.agg.size.toLocaleString()} 행, ${weeks.length} 주차)`
-    : `   — ${src.table}: 새로 적재할 주차 없음 (전용 리포트 보존)`);
+  const groups = [
+    { label: '전용', fillOnly: false, list: results.filter(r => !r.fillOnly) },
+    { label: '복합→빈 주차만', fillOnly: true, list: results.filter(r => r.fillOnly) },
+  ].filter(g => g.list.length);
+
+  for (const g of groups) {
+    console.log(`\n━━ ${src.label} (${name}) ━━  파일 ${g.list.length}개${groups.length > 1 ? `  [${g.label}]` : g.fillOnly ? '  [복합→빈 주차만]' : ''}`);
+    const m = merge(g.list, src);
+    report(m);
+    if (dry) { console.log('   --dry: DB 쓰기 생략' + (g.fillOnly ? ' (빈 주차만 채움)' : '')); continue; }
+    const weeks = await writeWeeks(name, src, m,
+      { market: MARKET, fillOnly: g.fillOnly, detail: `CSV 파일 ${g.list.length}개${g.fillOnly ? ' (복합→빈 주차만)' : ''}` });
+    console.log(weeks.length
+      ? `   ✓ ${src.table} 적재 완료 (${m.agg.size.toLocaleString()} 행, ${weeks.length} 주차)`
+      : `   — ${src.table}: 새로 적재할 주차 없음 (전용 리포트 보존)`);
+  }
 }
 
 if (!dry) console.log('\n검증은 `npm run verify` 로 확인하세요.');
