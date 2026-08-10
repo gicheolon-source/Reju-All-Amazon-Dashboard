@@ -947,7 +947,24 @@ function renderCampaigns(){
 let pState={pf:'',q:'',sort:'cost',dir:-1};
 function setPPf(v){pState.pf=v;renderProducts();}
 function setPSort(k){ if(pState.sort===k)pState.dir*=-1; else{pState.sort=k;pState.dir=-1;} renderProducts(); }
-function prodName(asin,title){ return S.asinNames[asin]||title||''; }
+/* 아마존 타이틀을 '간단한 제품명 + 용량' 으로 줄인다.
+   'Dr.Reju-All Advanced PDRN Rejuvenating Cream 0.7 Fl Oz' → 'PDRN Rejuvenating Cream 0.7oz'
+   'Dr.Reju-All Repair & Tone Duo: … + …' → 'Repair & Tone Duo'
+   수동 이름(✎)이 있으면 그게 우선이다. */
+function shortTitle(t){
+  let s=String(t||'').trim();
+  if(!s)return '';
+  s=s.replace(/^dr\.?\s*reju[\s-]?all\s*/i,'');            // 브랜드 접두어
+  // 용량: '0.7 Fl Oz' / '(1.2 Fl Oz x 4EA)' / '34g'
+  let size='';
+  const m=s.match(/\(?\s*([\d.]+)\s*fl\.?\s*oz\.?\s*(?:x\s*(\d+)\s*ea)?\s*\)?/i);
+  if(m){ size=m[1]+'oz'+(m[2]?'×'+m[2]:''); s=s.replace(m[0],' '); }
+  s=s.split(/\s*[:|]\s*/)[0];                              // 'Duo: A + B' → 'Duo'
+  s=s.split(/\s+-\s+/)[0];                                 // ' - Face Moisturizer…' 꼬리 제거
+  s=s.replace(/^advanced\s+/i,'').replace(/\s{2,}/g,' ').trim();
+  return (s+(size?' '+size:'')).trim();
+}
+function prodName(asin,title){ return S.asinNames[asin]||shortTitle(title)||''; }
 function editAsinName(asin){
   const v=prompt(`${asin} 제품명 (대시보드 표시용)`,S.asinNames[asin]||'');
   if(v==null)return;
@@ -980,7 +997,7 @@ function renderProducts(){
     const title=rs.find(r=>r.title)?.title||'';
     return {asin,title,name:prodName(asin,title),campaigns:[...new Set(rs.map(r=>r.camp))],pfs:[...new Set(rs.map(r=>r.pf))],a,v:verdict(a,target)};
   });
-  if(pState.q){const q=pState.q.toLowerCase();list=list.filter(x=>x.asin.toLowerCase().includes(q)||x.name.toLowerCase().includes(q)||x.campaigns.some(cm=>cm.toLowerCase().includes(q)));}
+  if(pState.q){const q=pState.q.toLowerCase();list=list.filter(x=>x.asin.toLowerCase().includes(q)||x.name.toLowerCase().includes(q)||x.title.toLowerCase().includes(q)||x.campaigns.some(cm=>cm.toLowerCase().includes(q)));}
   list.sort((x,y)=>{let a=x.a[pState.sort],b=y.a[pState.sort];
     if(a==null||a===Infinity)a=pState.sort==='acos'?9e9:-1;if(b==null||b===Infinity)b=pState.sort==='acos'?9e9:-1;
     return (a<b?-1:a>b?1:0)*pState.dir;});
