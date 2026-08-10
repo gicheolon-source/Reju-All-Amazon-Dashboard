@@ -25,3 +25,6 @@ reports/au/*
 !reports/uk
 reports/uk/*
 !reports/uk/.gitkeep
+!reports/ae
+reports/ae/*
+!reports/ae/.gitkeep
