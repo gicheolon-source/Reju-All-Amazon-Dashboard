@@ -14,7 +14,7 @@
 import { ROOT } from '../lib/env.mjs';
 import { readdir, stat, mkdir } from 'node:fs/promises';
 import { join, extname, basename, resolve } from 'node:path';
-import { SOURCES, MARKETS, cleanMarket, detectSource } from '../lib/sources.mjs';
+import { SOURCES, MARKETS, cleanMarket, detectSources } from '../lib/sources.mjs';
 import { readCsvAoa } from '../lib/csv.mjs';
 import { aggregate, merge, writeWeeks, report, HeaderError } from '../lib/aggregate.mjs';
 
@@ -83,20 +83,24 @@ for (const f of files) {
   const label = basename(f);
   try {
     const { rows, count, delimiter } = await readCsvAoa(f);
-    const name = detectSource(rows[0]);
-    if (!name) {
+    const names = detectSources(rows[0]);
+    if (!names.length) {
       console.error(`✗ ${label} — 리포트 종류를 알 수 없습니다`);
       console.error(`    헤더: ${rows[0].slice(0, 12).join(' | ')}${rows[0].length > 12 ? ' …' : ''}`);
       failed++; continue;
     }
-    const src = SOURCES[name];
-    const res = aggregate(rows, src, { weekFilter });
-    const weeks = [...res.byWeek.keys()].sort();
-    console.log(`✓ ${label}  →  ${src.label}   ${count.toLocaleString()}행 읽음` +
-      `  ·  인정 ${res.agg.size.toLocaleString()}  ·  주차 ${weeks.length ? weeks.join(', ') : '없음'}` +
-      (delimiter !== ',' ? `  (구분자 ${JSON.stringify(delimiter)})` : ''));
-    if (!bySource.has(name)) bySource.set(name, []);
-    bySource.get(name).push(res);
+    /* 차원이 섞인 파일은 해당하는 소스 전부에 적재된다 (합계는 보존된다) */
+    for (const name of names) {
+      const src = SOURCES[name];
+      const res = aggregate(rows, src, { weekFilter });
+      const weeks = [...res.byWeek.keys()].sort();
+      console.log(`✓ ${label}  →  ${src.label}   ${count.toLocaleString()}행 읽음` +
+        `  ·  인정 ${res.agg.size.toLocaleString()}  ·  주차 ${weeks.length ? weeks.join(', ') : '없음'}` +
+        (names.length > 1 ? `  (복합 리포트 ${names.indexOf(name) + 1}/${names.length})` : '') +
+        (delimiter !== ',' ? `  (구분자 ${JSON.stringify(delimiter)})` : ''));
+      if (!bySource.has(name)) bySource.set(name, []);
+      bySource.get(name).push(res);
+    }
   } catch (e) {
     failed++;
     if (e instanceof HeaderError) {
