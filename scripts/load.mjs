@@ -95,7 +95,15 @@ for (const f of files) {
        빈 주차만 채우는 fillOnly 로 표시한다 — 전용 캠페인 리포트가 항상 이긴다. */
     for (const name of names) {
       const src = SOURCES[name];
-      const res = aggregate(rows, src, { weekFilter });
+      let res;
+      try { res = aggregate(rows, src, { weekFilter }); }
+      catch (e) {
+        /* 한 소스의 열 누락이 같은 파일의 다른 소스 적재까지 막으면 안 된다 */
+        failed++;
+        console.error(`✗ ${label} → ${src.label} — ${e.message}`);
+        if (e instanceof HeaderError) console.error(`    실제 헤더: ${e.header.join(' | ').slice(0, 200)}`);
+        continue;
+      }
       res.fillOnly = names.length > 1 && name === 'campaigns';
       const weeks = [...res.byWeek.keys()].sort();
       console.log(`✓ ${label}  →  ${src.label}   ${count.toLocaleString()}행 읽음` +
