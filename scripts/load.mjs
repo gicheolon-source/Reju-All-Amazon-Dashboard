@@ -90,14 +90,18 @@ for (const f of files) {
       console.error(`    헤더: ${rows[0].slice(0, 12).join(' | ')}${rows[0].length > 12 ? ' …' : ''}`);
       failed++; continue;
     }
-    /* 차원이 섞인 파일은 해당하는 소스 전부에 적재된다 (합계는 보존된다) */
+    /* 차원이 섞인 파일은 해당하는 소스 전부에 적재된다 (합계는 보존된다).
+       단 복합 파일의 캠페인 총액은 전용 리포트보다 13~22% 적으므로(SB 일부 누락)
+       빈 주차만 채우는 fillOnly 로 표시한다 — 전용 캠페인 리포트가 항상 이긴다. */
     for (const name of names) {
       const src = SOURCES[name];
       const res = aggregate(rows, src, { weekFilter });
+      res.fillOnly = names.length > 1 && name === 'campaigns';
       const weeks = [...res.byWeek.keys()].sort();
       console.log(`✓ ${label}  →  ${src.label}   ${count.toLocaleString()}행 읽음` +
         `  ·  인정 ${res.agg.size.toLocaleString()}  ·  주차 ${weeks.length ? weeks.join(', ') : '없음'}` +
         (names.length > 1 ? `  (복합 리포트 ${names.indexOf(name) + 1}/${names.length})` : '') +
+        (res.fillOnly ? '  [빈 주차만]' : '') +
         (delimiter !== ',' ? `  (구분자 ${JSON.stringify(delimiter)})` : ''));
       if (!bySource.has(name)) bySource.set(name, []);
       bySource.get(name).push(res);
@@ -121,10 +125,14 @@ for (const [name, results] of bySource) {
   const src = SOURCES[name];
   console.log(`\n━━ ${src.label} (${name}) ━━  파일 ${results.length}개`);
   const m = merge(results, src);
+  const fillOnly = results.every(r => r.fillOnly);
   report(m);
-  if (dry) { console.log('   --dry: DB 쓰기 생략'); continue; }
-  const weeks = await writeWeeks(name, src, m, { market: MARKET, detail: `CSV 파일 ${results.length}개` });
-  console.log(`   ✓ ${src.table} 적재 완료 (${m.agg.size.toLocaleString()} 행, ${weeks.length} 주차)`);
+  if (dry) { console.log('   --dry: DB 쓰기 생략' + (fillOnly ? ' (빈 주차만 채움)' : '')); continue; }
+  const weeks = await writeWeeks(name, src, m,
+    { market: MARKET, fillOnly, detail: `CSV 파일 ${results.length}개${fillOnly ? ' (복합→빈 주차만)' : ''}` });
+  console.log(weeks.length
+    ? `   ✓ ${src.table} 적재 완료 (${m.agg.size.toLocaleString()} 행, ${weeks.length} 주차)`
+    : `   — ${src.table}: 새로 적재할 주차 없음 (전용 리포트 보존)`);
 }
 
 if (!dry) console.log('\n검증은 `npm run verify` 로 확인하세요.');
