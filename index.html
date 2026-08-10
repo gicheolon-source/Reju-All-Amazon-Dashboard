@@ -484,6 +484,8 @@ async function boot(){
   try{
     META=await api('/api/weeks?market='+S.market);
     D.account=META.account;
+    /* 금액 기호는 마켓 통화를 따른다 (CA=C$, UK=£ …) — 환율 변환은 없다 */
+    S.settings.currency=META.currency||'$';
     document.getElementById('brandSub').textContent=META.account;
     renderMktSeg();
     if(!META.weeks.length){
