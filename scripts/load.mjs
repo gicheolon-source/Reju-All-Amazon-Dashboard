@@ -96,7 +96,7 @@ for (const f of files) {
     for (const name of names) {
       const src = SOURCES[name];
       let res;
-      try { res = aggregate(rows, src, { weekFilter }); }
+      try { res = aggregate(rows, src, { weekFilter, expectCurrency: MARKETS[MARKET].code }); }
       catch (e) {
         /* 한 소스의 열 누락이 같은 파일의 다른 소스 적재까지 막으면 안 된다 */
         failed++;
