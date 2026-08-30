@@ -154,10 +154,11 @@ footer{max-width:1280px;margin:0 auto;padding:6px 20px 30px;font-size:11.5px;col
 <script>
 /* ================= config ================= */
 // ▼▼▼ Supabase 연동 시 아래 두 줄만 채우세요 (비우면 로컬 모드로 작동) ▼▼▼
-const SUPABASE_URL = "https://vyejopyalutnooorxnme.supabase.co";
-// 신형 Publishable key (구 anon key 후속). RLS 전제로 공개 안전 — 커밋해도 된다.
-// PostgREST 가 apikey + Bearer 헤더 조합을 구형과 동일하게 받는 것 검증됨 (2026-08).
-const SUPABASE_ANON_KEY = "sb_publishable_bdfxIlp3FLOezVjMx1kh6Q_QA1NtAha";
+// 2026-08: Supabase 프로젝트 삭제 후 로컬 모드로 운영하기로 결정.
+// 다시 켜려면 supabase/schema.sql 로 새 프로젝트를 만들고 아래 두 줄만 채우면 된다
+// (신형 sb_publishable_* 키도 기존 apikey+Bearer 헤더 조합 그대로 동작 — 검증됨).
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
 // ▲▲▲ 설정 방법은 함께 제공된 hybrid_setup.md 참고 ▲▲▲
 
 // ▼▼▼ 구글 시트 소스 (비우면 해당 탭은 웹에서 직접 입력) ▼▼▼
