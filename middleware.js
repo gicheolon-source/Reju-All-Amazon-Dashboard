@@ -1,10 +1,15 @@
-import { valid, readCookie } from './lib/auth.mjs';
+import { valid, readCookie } from './lab/lib/auth.mjs';
 
+/* 비밀번호 게이트는 Ads Lab(/lab, /api/lab) 에만 건다.
+   Weekly · Inventory 는 원래 리포처럼 게이트 없이 열린다. */
 export const config = {
-  matcher: ['/((?!login|api/login|favicon.ico).*)'],
+  matcher: ['/lab', '/lab/:path*', '/api/lab/:path*'],
 };
 
 export default async function middleware(req) {
+  const url = new URL(req.url);
+  if (url.pathname === '/lab/login' || url.pathname === '/lab/login.html' || url.pathname === '/api/lab/login') return;
+
   const secret = process.env.DASH_SECRET;
   const password = process.env.DASH_PASSWORD;
 
@@ -13,12 +18,13 @@ export default async function middleware(req) {
 
   if (await valid(readCookie(req.headers.get('cookie')), secret)) return;
 
-  const url = new URL(req.url);
   if (url.pathname.startsWith('/api/')) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401, headers: { 'content-type': 'application/json' },
     });
   }
-  url.pathname = '/login';
+  const next = url.pathname;
+  url.pathname = '/lab/login';
+  url.search = '?next=' + encodeURIComponent(next);
   return Response.redirect(url, 302);
 }

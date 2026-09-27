@@ -10,12 +10,12 @@ cdn = '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.
 assert cdn in html, 'chart cdn tag not found'
 html = html.replace(cdn, '<script>' + chart_safe + '</script>')
 
-start_find = "  try{\n    const r = await fetch('/api/data');"
+start_find = "  try{\n    const r = await fetch('/api/weekly/data');"
 assert start_find in html, 'loadData start not found'
 start_repl = ("  if (window.__EMBEDDED_DATA__ && Array.isArray(window.__EMBEDDED_DATA__.weeks) && window.__EMBEDDED_DATA__.weeks.length){\n"
               "    apply(window.__EMBEDDED_DATA__, 'Data source: 내장 데이터 · 오프라인');\n"
               "  } else {\n"
-              "  try{\n    const r = await fetch('/api/data');")
+              "  try{\n    const r = await fetch('/api/weekly/data');")
 html = html.replace(start_find, start_repl, 1)
 
 end_find = "    }\n  }\n\n  const badge = document.getElementById('modeBadge');"

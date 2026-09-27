@@ -2,7 +2,7 @@
    필수 컬럼 · Date range 패턴(주간/월간 라우팅) · 집계 결과까지 확인 */
 import fs from 'fs';
 import { JWT } from 'google-auth-library';
-import { buildDashboard } from './api/data.js';
+import { buildDashboard } from '../api/weekly-intl/data.js';
 
 const [SHEET, GIDS] = process.argv.slice(2);
 const GID = parseInt(GIDS, 10);

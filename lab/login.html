@@ -39,10 +39,10 @@ f.addEventListener('submit', async e => {
   e.preventDefault();
   go.disabled=true; err.textContent='';
   try{
-    const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},
+    const r=await fetch('/api/lab/login',{method:'POST',headers:{'content-type':'application/json'},
                                      body:JSON.stringify({password:pw.value})});
     const j=await r.json().catch(()=>({}));
-    if(r.ok){ location.replace(new URLSearchParams(location.search).get('next')||'/'); return; }
+    if(r.ok){ location.replace(new URLSearchParams(location.search).get('next')||'/lab'); return; }
     err.textContent=j.error||'로그인에 실패했습니다';
   }catch(_){ err.textContent='서버에 연결할 수 없습니다'; }
   go.disabled=false; pw.select();

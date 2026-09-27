@@ -33,7 +33,7 @@ if data:
     # 내장 데이터가 있을 때만 loadData 앞단에 분기를 끼운다.
     # ⚠ start_find 는 fetch 인수 앞까지만 매칭한다 — 뒤에 ' + (want ? …)' 가
     #    이어지므로, 치환문을 세미콜론으로 닫으면 JS 가 깨진다.
-    start_find = "  try{\n    const r = await fetch('/api/data'"
+    start_find = "  try{\n    const r = await fetch('/api/weekly-intl/data'"
     assert start_find in html, 'loadData start not found'
     start_repl = ("  if (window.__EMBEDDED_DATA__ && Array.isArray(window.__EMBEDDED_DATA__.weeks) && window.__EMBEDDED_DATA__.weeks.length){\n"
                   "    apply(window.__EMBEDDED_DATA__, 'Data source: 내장 데이터 · 오프라인');\n"

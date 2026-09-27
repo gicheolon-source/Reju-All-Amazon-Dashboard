@@ -2,7 +2,7 @@
    탭 목록 · ASIN 탭 자동 탐색 · 헤더 검사 · 데이터 범위 · 광고열 채움 · 집계 결과 */
 import fs from 'fs';
 import { JWT } from 'google-auth-library';
-import { buildDashboard } from './api/data.js';
+import { buildDashboard } from '../api/weekly-intl/data.js';
 
 const SHEET = process.argv[2];
 if (!SHEET) { console.error('사용법: node _check.mjs <SHEET_ID>'); process.exit(1); }

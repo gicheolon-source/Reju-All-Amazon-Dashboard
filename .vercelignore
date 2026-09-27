@@ -1,0 +1,7 @@
+# 배포에 필요 없는 문서·로컬 도구 (함수 번들에 영향 없음)
+inventory/docs/
+inventory/supabase/
+inventory/test/
+lab/reports/
+lab/scripts/
+lab/db/

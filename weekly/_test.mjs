@@ -1,4 +1,4 @@
-import { buildDashboard } from './api/data.js';
+import { buildDashboard } from '../api/weekly/data.js';
 import fs from 'fs';
 
 /* _pull.mjs 가 받아둔 RAW(asin·camp·notes) 를 그대로 집계한다 */

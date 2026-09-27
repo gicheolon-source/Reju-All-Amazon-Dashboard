@@ -1,4 +1,4 @@
-import { buildDashboard, COUNTRIES } from './api/data.js';
+import { buildDashboard, COUNTRIES } from '../api/weekly-intl/data.js';
 import fs from 'fs';
 
 /* 이 샘플이 어느 국가 데이터인지. _pull.mjs 가 받아온 시트와 반드시 맞춰야 한다.

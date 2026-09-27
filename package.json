@@ -1,0 +1,30 @@
+{
+  "name": "reju-all-amazon-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "node lab/scripts/serve.mjs",
+    "test": "node inventory/test/smoke_test.js",
+    "lab:init-db": "node lab/scripts/init-db.mjs",
+    "lab:load": "node lab/scripts/load.mjs",
+    "lab:load:ca": "node lab/scripts/load.mjs --market=ca",
+    "lab:load:au": "node lab/scripts/load.mjs --market=au",
+    "lab:load:uk": "node lab/scripts/load.mjs --market=uk",
+    "lab:load:ae": "node lab/scripts/load.mjs --market=ae",
+    "lab:ingest": "node lab/scripts/ingest.mjs",
+    "lab:verify": "node lab/scripts/verify.mjs",
+    "lab:verify:ca": "node lab/scripts/verify.mjs --market=ca",
+    "lab:verify:au": "node lab/scripts/verify.mjs --market=au",
+    "lab:verify:uk": "node lab/scripts/verify.mjs --market=uk",
+    "lab:verify:ae": "node lab/scripts/verify.mjs --market=ae",
+    "lab:update": "node lab/scripts/ingest.mjs && node lab/scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.4",
+    "google-auth-library": "^11.0.0"
+  }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dr. Reju-All — Amazon Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --bg:#F5F6F8; --card:#FFFFFF; --ink:#1B2430; --ink-soft:#5A6472; --line:#E3E6EB;
+  --accent:#E8830C; --accent-soft:#FDF1E2;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#12151A; --card:#1B2027; --ink:#E9ECF1; --ink-soft:#9AA3AF; --line:#2A3039;
+         --accent:#F29A35; --accent-soft:#2E2417; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard Variable",Pretendard,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:980px;margin:0 auto;padding:56px 16px 40px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:30px;line-height:1.25;margin:8px 0 6px;letter-spacing:-.02em}
+.sub{color:var(--ink-soft);margin:0 0 32px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+a.card{display:flex;flex-direction:column;gap:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:22px 22px 18px;color:inherit;text-decoration:none;
+  transition:border-color .15s, transform .15s, box-shadow .15s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.lock{font-size:11px;color:var(--ink-soft)}
+.card h2{font-size:18px;margin:0;letter-spacing:-.01em}
+.card p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.55}
+.go{margin-top:auto;padding-top:6px;font-size:13px;font-weight:600;color:var(--accent)}
+footer{margin-top:40px;color:var(--ink-soft);font-size:12px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">Dr. Reju-All · Amazon</div>
+  <h1>Amazon 통합 대시보드</h1>
+  <p class="sub">주간 리포트 · 재고 관제 · 광고 분석을 한 곳에서.</p>
+
+  <div class="grid">
+    <a class="card" href="/weekly">
+      <div class="top"><span class="tag">US</span></div>
+      <h2>Weekly Report (Lite)</h2>
+      <p>미국 주간 보고용. 매출·유닛·세션·광고비·캠페인 성과·주간 코멘트.</p>
+      <span class="go">열기 →</span>
+    </a>
+    <a class="card" href="/weekly-intl">
+      <div class="top"><span class="tag">US · CA · UK · AU · AE</span></div>
+      <h2>Weekly Report (INTL)</h2>
+      <p>다국가 주간 보고. 국가 전환, 현지 통화 표시, 같은 집계 로직.</p>
+      <span class="go">열기 →</span>
+    </a>
+    <a class="card" href="/inventory">
+      <div class="top"><span class="tag">FBA + 3PL</span></div>
+      <h2>재고 관제</h2>
+      <p>국가별 재고·확보 개월수·월별 목표·발송 Pipeline 관리.</p>
+      <span class="go">열기 →</span>
+    </a>
+    <a class="card" href="/lab">
+      <div class="top"><span class="tag">Ads</span><span class="lock">🔒 비밀번호</span></div>
+      <h2>AMZ Ads Lab</h2>
+      <p>서치텀·타겟팅·캠페인·제품을 주차 단위로 판정하는 광고 분석.</p>
+      <span class="go">열기 →</span>
+    </a>
+  </div>
+
+  <footer>Sources: rejuall_gl_amz_weekly · inventory-dashboard · rejuall_us_lab</footer>
+</main>
+</body>
+</html>

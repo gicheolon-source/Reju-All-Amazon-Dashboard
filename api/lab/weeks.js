@@ -1,4 +1,4 @@
-import { weeksMeta, cleanMarket } from '../lib/query.mjs';
+import { weeksMeta, cleanMarket } from '../../lab/lib/query.mjs';
 
 export default async function handler(req, res) {
   try {

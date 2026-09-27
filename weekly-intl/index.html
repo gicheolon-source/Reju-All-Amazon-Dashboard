@@ -807,7 +807,7 @@ async function loadData(){
   const want = urlCountry || savedCountry;
   let reason = '';
   try{
-    const r = await fetch('/api/data' + (want ? '?country=' + encodeURIComponent(want) : ''));
+    const r = await fetch('/api/weekly-intl/data' + (want ? '?country=' + encodeURIComponent(want) : ''));
     if(!r.ok) throw new Error('api HTTP ' + r.status);
     const d = await r.json();
     applyMeta(d);                                   // 실패 응답이어도 국가 메타는 살린다
@@ -819,7 +819,7 @@ async function loadData(){
   }catch(e){
     reason = (e && e.message) || String(e);
     try{                                   // 로컬 프리뷰: 정적 샘플
-      const r2 = await fetch('./data.sample.json?t=' + Date.now());  // 갱신분 즉시 반영(캐시 우회)
+      const r2 = await fetch('/weekly-intl/data.sample.json?t=' + Date.now());  // 갱신분 즉시 반영(캐시 우회)
       if(!r2.ok) throw 0;
       const d2 = await r2.json();
       if(!Array.isArray(d2.weeks) || !d2.weeks.length) throw 0;

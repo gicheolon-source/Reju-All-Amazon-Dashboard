@@ -1,4 +1,4 @@
-import { makeCookie, clearCookie } from '../lib/auth.mjs';
+import { makeCookie, clearCookie } from '../../lab/lib/auth.mjs';
 
 export default async function handler(req, res) {
   const { DASH_PASSWORD, DASH_SECRET } = process.env;

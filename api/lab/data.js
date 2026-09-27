@@ -1,4 +1,4 @@
-import { snapshot, cleanWeeks, cleanMarket } from '../lib/query.mjs';
+import { snapshot, cleanWeeks, cleanMarket } from '../../lab/lib/query.mjs';
 
 export default async function handler(req, res) {
   try {

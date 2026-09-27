@@ -1,0 +1,8 @@
+node_modules
+.vercel
+.env*
+!.env.example
+!lab/.env.example
+service-account*.json
+*.key.json
+*.json.key
