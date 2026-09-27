@@ -1,0 +1,29 @@
+{
+  "name": "amz-ads-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "init-db": "node scripts/init-db.mjs",
+    "load": "node scripts/load.mjs",
+    "load:ca": "node scripts/load.mjs --market=ca",
+    "load:au": "node scripts/load.mjs --market=au",
+    "load:uk": "node scripts/load.mjs --market=uk",
+    "load:ae": "node scripts/load.mjs --market=ae",
+    "ingest": "node scripts/ingest.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:ca": "node scripts/verify.mjs --market=ca",
+    "verify:au": "node scripts/verify.mjs --market=au",
+    "verify:uk": "node scripts/verify.mjs --market=uk",
+    "verify:ae": "node scripts/verify.mjs --market=ae",
+    "update": "node scripts/ingest.mjs && node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.4",
+    "google-auth-library": "^11.0.0"
+  }
+}

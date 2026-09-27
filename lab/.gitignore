@@ -1,0 +1,30 @@
+node_modules
+.vercel
+.env*
+!.env.example
+service-account*.json
+*.key.json
+
+# 로컬 SQLite (Turso 가 원본, 로컬 파일은 개발용 사본)
+data/*.db
+data/*.db-*
+
+# 스크래치
+_*.mjs
+_*.json
+reports/*
+!reports/us
+reports/us/*
+!reports/us/.gitkeep
+!reports/ca
+reports/ca/*
+!reports/ca/.gitkeep
+!reports/au
+reports/au/*
+!reports/au/.gitkeep
+!reports/uk
+reports/uk/*
+!reports/uk/.gitkeep
+!reports/ae
+reports/ae/*
+!reports/ae/.gitkeep
