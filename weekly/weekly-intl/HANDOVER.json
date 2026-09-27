@@ -1,0 +1,222 @@
+{
+  "_readme": {
+    "목적": "Dr. Rejuall 주간 성과 대시보드 인수인계용 설정·현황 명세",
+    "기준일": "2026-08-04",
+    "주의": "서비스 계정 비공개 키(GOOGLE_PRIVATE_KEY)는 이 파일에 없습니다. Vercel 환경변수에만 있고, Sensitive 로 저장되어 조회가 불가능합니다. 원본은 서비스 계정 JSON 키 파일입니다.",
+    "함께_볼_문서": {
+      "README.md": "환경변수 전체·시트 구조·주간 운영 플로우·증상별 원인",
+      "BRAND_HANDOFF.md": "다른 브랜드로 이식할 때 (Claude 대상 인수인계서)",
+      "NEW_COUNTRY_SETUP.md": "같은 브랜드에 국가를 추가할 때"
+    }
+  },
+
+  "배포": {
+    "다국가판": {
+      "vercel_project": "rejuall-weekly-intl",
+      "url": "https://rejuall-weekly-intl.vercel.app",
+      "국가": ["US", "CA", "UK", "AU", "AE"],
+      "국가_전환": "https://rejuall-weekly-intl.vercel.app/?country=CA#/ads 형식. URL 이 곧 공유 링크",
+      "root_directory": "weekly-intl"
+    },
+    "US_단일판_구버전": {
+      "vercel_project": "rejuall-gl-amz-weekly",
+      "url": "https://rejuall-gl-amz-weekly.vercel.app",
+      "root_directory": "(저장소 루트)",
+      "상태": "운영 중이나 다국가판이 상위 호환. 이번 개발의 버그 수정 6건이 반영되어 있지 않음",
+      "미반영_수정": [
+        "헤더 표기 정규화 (normHdr)",
+        "마침표 날짜 파싱 (2026. 8. 2)",
+        "Campaign 리포트 폴백 (adSrc)",
+        "광고열 부분입력 감지 (spendDays)",
+        "마지막 완료 주차로 열기 (defaultWeekIndex)",
+        "포트폴리오 필터 소실 수정"
+      ],
+      "권고": "신규 작업은 다국가판(weekly-intl) 기준으로 진행할 것"
+    },
+    "github": {
+      "repo": "https://github.com/ethan-elpapa/rejuall_gl_amz_weekly",
+      "visibility": "private",
+      "branch": "main",
+      "구조": "저장소 루트 = US 단일판, weekly-intl/ = 다국가판",
+      "배포_방식": "GitHub 연동. main 에 푸시하면 두 프로젝트 모두 자동 재배포"
+    }
+  },
+
+  "서비스_계정": {
+    "client_email": "rejuall-amz-us-dashboard@impactful-name-495400-k2.iam.gserviceaccount.com",
+    "gcp_project": "impactful-name-495400-k2",
+    "scope": "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "필요_권한": "아래 모든 스프레드시트에 '뷰어' 공유",
+    "보안_경고": "현재 키는 노출된 상태입니다(작업 중 평문 전달됨). 새 키 발급 → 두 Vercel 프로젝트의 GOOGLE_PRIVATE_KEY 갱신 → 각각 Redeploy → 옛 키 삭제 순서로 교체가 필요합니다."
+  },
+
+  "국가별_시트": {
+    "US": {
+      "통화": { "symbol": "$", "iso": "USD" },
+      "main_sheet": {
+        "id": "1tlz01J78avbCMn2zObK1gN5-Sy1oPwz_VthdalC49ao",
+        "title": "리쥬올_미국 아마존 판매 현황",
+        "asin_tab": { "gid": 952475532, "name": "Child sales_RAW" },
+        "campaign_tab": { "gid": 1710166971, "name": "AD 캠페인" }
+      },
+      "notes_sheet": {
+        "id": "1GOClg8wNjUOJAQzcu2dGbENoMWrMCMd4vzx-LLqkFqA",
+        "title": "Dashboard Weekly Comments",
+        "gid": 119883587,
+        "name": "NOTES_template"
+      },
+      "비고": "시트 좌표가 api/data.js 의 COUNTRIES.US.sheets 에 코드 기본값으로 박혀 있어 환경변수 없이도 동작. 다른 브랜드로 이식할 때는 반드시 삭제할 것"
+    },
+    "CA": {
+      "통화": { "symbol": "C$", "iso": "CAD" },
+      "main_sheet": {
+        "id": "1_IYvl05yI8YmHFYkMeicHPwBHIwGWUZgXLfrZ4txRio",
+        "title": "리쥬올_캐나다 아마존 판매 현황",
+        "asin_tab": { "gid": 0, "name": "Child sales_RAW_CA" },
+        "campaign_tab": { "gid": 35247097, "name": "AD 캠페인" }
+      },
+      "notes_sheet": {
+        "id": "17fBAiKIUS1a3RsvKbXOG_zgipFAzvo2RrygRYpAM1nw",
+        "title": "Dashboard Weekly Comments CA",
+        "gid": 119883587,
+        "name": "NOTES_template"
+      }
+    },
+    "UK": {
+      "통화": { "symbol": "£", "iso": "GBP" },
+      "main_sheet": {
+        "id": "1dESw-mxQKkkN-NzvPd9eg4M3YkKPAjFZmP_PyddqgX8",
+        "title": "리쥬올_UK 아마존 판매현황",
+        "asin_tab": { "gid": 0, "name": "Child sales_RAW_UK" },
+        "campaign_tab": { "gid": 436485850, "name": "AD 캠페인" }
+      },
+      "notes_sheet": {
+        "id": "1qhM_jfi9E7fDUbm656SCUHSzYEvhgVc_fXXfnQH4t_w",
+        "title": "Dashboard Weekly Comments UK",
+        "gid": 119883587,
+        "name": "NOTES_template"
+      }
+    },
+    "AU": {
+      "통화": { "symbol": "A$", "iso": "AUD" },
+      "main_sheet": {
+        "id": "11rXNp-JU1WnqkxAcEsX9SO0JOpaNAbrU2zvgxGh0ZgQ",
+        "title": "리쥬올_호주 아마존 판매 현황",
+        "asin_tab": { "gid": 0, "name": "Child sales_RAW_AU" },
+        "campaign_tab": { "gid": 1683027339, "name": "AD 캠페인" }
+      },
+      "notes_sheet": {
+        "id": "1ysa9Oq0WZmB4ApLa49x_la1iEFK5cIWMO3TITjcLn2o",
+        "title": "Dashboard Weekly Comments AU",
+        "gid": 119883587,
+        "name": "NOTES_template"
+      }
+    },
+    "AE": {
+      "통화": { "symbol": "AED ", "iso": "AED" },
+      "라벨": "Middle East (UAE)",
+      "main_sheet": {
+        "id": "1JGDCm4bmW5NsJffgwJD_uW2ZbkiCwbzzwWDOFMXyYos",
+        "title": "리쥬올_중동 아마존 판매 현황",
+        "asin_tab": { "gid": 0, "name": "Child sales_RAW_UAE" },
+        "campaign_tab": { "gid": 277200514, "name": "AD 캠페인" }
+      },
+      "notes_sheet": {
+        "id": "1o_YAylY2zyAmmjlGRlH_feEEcP8q_yqpdN28MJwDmLk",
+        "title": "Dashboard Weekly Comments AE",
+        "gid": 119883587,
+        "name": "NOTES_template"
+      }
+    }
+  },
+
+  "vercel_환경변수": {
+    "프로젝트": "rejuall-weekly-intl",
+    "공통": {
+      "GOOGLE_SERVICE_ACCOUNT_EMAIL": "위 서비스_계정.client_email (Sensitive)",
+      "GOOGLE_PRIVATE_KEY": "서비스 계정 JSON 의 private_key 전체 (Sensitive · 조회 불가)"
+    },
+    "국가별_설정됨": [
+      "SHEET_CA_MAIN_ID", "GID_CA_ASIN", "GID_CA_CAMPAIGN", "SHEET_CA_NOTES_ID", "GID_CA_NOTES",
+      "SHEET_UK_MAIN_ID", "GID_UK_ASIN", "GID_UK_CAMPAIGN", "SHEET_UK_NOTES_ID", "GID_UK_NOTES",
+      "SHEET_AU_MAIN_ID", "GID_AU_ASIN", "GID_AU_CAMPAIGN", "SHEET_AU_NOTES_ID", "GID_AU_NOTES",
+      "SHEET_AE_MAIN_ID", "GID_AE_ASIN", "GID_AE_CAMPAIGN", "SHEET_AE_NOTES_ID", "GID_AE_NOTES"
+    ],
+    "US_는_환경변수_없음": "코드 기본값 사용. 필요 시 SHEET_US_MAIN_ID 등으로 덮어쓸 수 있음",
+    "선택": {
+      "DEFAULT_COUNTRY": "미설정 (기본 US)",
+      "WEEKS_SHOWN": "미설정 (기본 16)"
+    },
+    "Sensitive_설정": "시트 ID·gid 는 비밀이 아니므로 Sensitive 를 끔(값 조회 가능). 서비스 계정 키 2개만 Sensitive 유지",
+    "주의": "환경변수 추가·변경 후 반드시 Redeploy 해야 반영됨"
+  },
+
+  "데이터_상태_2026-08-04_기준": {
+    "설명": "ASIN 탭의 Spend·Ad Sales 열이 채워진 마지막 날짜. 이 열이 비면 Campaign 리포트 값으로 자동 대체되며 화면에 '캠페인 리포트 기준' 으로 표시됨",
+    "US": { "asin_광고열": "2026-08-02 (최신)", "campaign_주차": "W22~W30", "판정": "정상" },
+    "CA": { "asin_광고열": "2026-05-06 에서 끊김", "campaign_주차": "W29~W30 만", "판정": "보완 필요" },
+    "UK": { "asin_광고열": "Spend 2026-08-02 / Ad Sales 2026-07-19 (불일치)", "campaign_주차": "W22~W30", "판정": "보완 필요" },
+    "AU": { "asin_광고열": "2026-06-13 에서 끊김", "campaign_주차": "W22~W30", "판정": "보완 필요" },
+    "AE": { "asin_광고열": "2026-08-03 (최신)", "campaign_주차": "W22~W30", "판정": "정상" }
+  },
+
+  "주간_운영_플로우": {
+    "재배포_불필요": "아래 3단계는 시트만 채우면 최대 5분 내 자동 반영됩니다. 푸시·환경변수·재배포 모두 불필요",
+    "1_매출": "Seller Central → Business Reports → Sales & Traffic by ASIN(일별) → 각 국가 ASIN 탭에 이어붙이기",
+    "2_광고": "광고 콘솔 → Reports → Campaign 리포트를 '일요일~토요일 정확히 7일치' 로 받아 AD 캠페인 탭에 이어붙이기",
+    "3_코멘트": "NOTES 시트 해당 주차 행의 Overview / Sales / Advertising 작성",
+    "주의_Date_range": "부분 기간(예: 5일치, 화요일 시작)은 중복 합산 방지를 위해 무시됩니다. 반드시 일~토 7일치로 받을 것",
+    "주의_Week_키": "NOTES 의 Week 값은 'W29' 또는 일요일 날짜('2026-07-19') 형식이어야 매칭됩니다. '29주차' 는 인식 안 됨",
+    "재배포_필요한_경우": [
+      "시트에 새 탭을 만들어 연결할 때 (환경변수 추가 후 Redeploy)",
+      "코드를 수정할 때 (git push → 자동 배포)",
+      "새 국가를 추가할 때 (api/data.js 의 COUNTRIES 에 한 줄 + 환경변수)"
+    ]
+  },
+
+  "미해결_과제": [
+    {
+      "우선순위": 1,
+      "항목": "서비스 계정 키 교체",
+      "사유": "현재 키가 노출된 상태. 이 키 하나로 위 스프레드시트 10개가 모두 열림",
+      "절차": "Google Cloud → IAM → 서비스 계정 → 키 → 새 키(JSON) 발급 → 두 Vercel 프로젝트의 GOOGLE_PRIVATE_KEY 갱신 → 각각 Redeploy → 옛 키 삭제"
+    },
+    {
+      "우선순위": 2,
+      "항목": "UK ASIN 탭 Ad Sales 열 보완 (2026-07-20 이후)",
+      "사유": "Spend 는 8/2 까지, Ad Sales 는 7/19 까지라 기준이 어긋남. 현재는 Campaign 리포트로 자동 대체되어 표시되지만, ASIN 기준으로 통일하려면 채워야 함"
+    },
+    {
+      "우선순위": 3,
+      "항목": "CA(5/7 이후)·AU(6/14 이후) ASIN 탭 광고열 보완",
+      "사유": "현재 Campaign 기준으로 표시 중. 채우면 US·AE 와 같은 ASIN 기준으로 자동 복귀"
+    },
+    {
+      "우선순위": 4,
+      "항목": "CA 이전 주차(W16~W28) 캠페인 리포트",
+      "사유": "현재 W29~W30 만 있음. 일~토 7일치로 주차별로 받아 이어붙일 것"
+    },
+    {
+      "우선순위": 5,
+      "항목": "CA·UK·AU·AE 코멘트 실제 내용 작성",
+      "사유": "현재 W29·W30 에 'Test' 만 입력되어 있음"
+    }
+  ],
+
+  "지표_출처_주의": {
+    "ASIN_탭_출처": ["Total Sales", "Units", "Sessions", "Ad Spend", "Ad Sales", "ACOS", "TACOS", "ROAS"],
+    "Campaign_탭_출처": ["Impressions", "Clicks", "CTR", "캠페인 표"],
+    "자동_대체": "ASIN 탭 광고열이 비었거나 일부 날짜만 채워진 주차는 Ad Spend·Ad Sales 를 Campaign 리포트에서 가져오고, 화면에 '캠페인 리포트 기준' 으로 표시됩니다",
+    "기준_차이": "두 출처는 집계 방식이 달라 값이 다릅니다. US 실측 ASIN $33,592 vs Campaign $42,152 (약 25% 차이). 국가 간 ACOS 를 비교할 때 어느 기준인지 확인이 필요합니다",
+    "노출수_주의": "ASIN 탭에도 Impressions 열이 있지만 사용하지 않습니다. US 실측 결과 Campaign 탭보다 20~35% 낮아, 섞으면 CTR 이 구조적으로 부풀려집니다"
+  },
+
+  "진단_도구": {
+    "위치": "weekly-intl/ 폴더",
+    "_check.mjs": "node _check.mjs <SHEET_ID> — 탭 목록, ASIN 탭 자동 탐색(헤더 기준), 필수 컬럼, 날짜 범위, 광고열 채움 구간, 16주 집계",
+    "_camp.mjs": "node _camp.mjs <SHEET_ID> <GID> — Campaign 리포트 필수 컬럼과 Date range 주간/월간 라우팅 판정",
+    "_notes.mjs": "node _notes.mjs <SHEET_ID> — 코멘트 시트 헤더 매칭과 주차 키 형식 검사",
+    "사전_준비": "서비스 계정 키 파일 경로를 환경변수로 지정: $env:REJUALL_SA_KEY=\"C:\\path\\to\\key.json\"",
+    "권고": "새 시트를 붙이기 전에 반드시 실행할 것. 헤더 표기 차이와 날짜 형식 문제는 에러 없이 숫자만 0 이 되므로 배포 후에는 발견하기 어렵습니다"
+  }
+}

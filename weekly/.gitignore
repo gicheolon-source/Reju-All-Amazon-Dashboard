@@ -1,0 +1,8 @@
+node_modules
+.vercel
+*.json.key
+service-account*.json
+
+# 로컬 수집/빌드 스크래치 (배포 불필요)
+_raw_arrays.json
+_chartjs.js
