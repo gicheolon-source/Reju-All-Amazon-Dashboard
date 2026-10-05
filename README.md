@@ -4,7 +4,8 @@
 
 | 경로 | 원본 리포 | 내용 |
 |---|---|---|
-| `/` | — | 허브 (4개 대시보드 링크) |
+| `/` | — | 허브 (대시보드 링크) |
+| `/global` | — | 글로벌 통합 대시보드 (아마존+틱톡샵 매출 · 퍼포먼스 마케팅 · 제품 현황) |
 | `/weekly` | [rejuall_gl_amz_weekly](https://github.com/ethan-elpapa/rejuall_gl_amz_weekly) (루트) | US 주간 리포트 Lite |
 | `/weekly-intl` | [rejuall_gl_amz_weekly](https://github.com/ethan-elpapa/rejuall_gl_amz_weekly) `/weekly-intl` | 다국가 주간 리포트 |
 | `/inventory` | [inventory-dashboard](https://github.com/ethan-elpapa/inventory-dashboard) | 재고 관제 (FBA + 3PL) |
@@ -18,6 +19,7 @@ api/weekly/data.js      ← weekly/api/data.js
 api/weekly-intl/data.js ← weekly-intl/api/data.js
 api/inventory/sheet.mjs ← inventory/api/sheet.mjs
 api/lab/{data,weeks,login}.js  ← lab/api/*  (lab/lib/* 를 import)
+api/global/sheets.mjs   글로벌 대시보드용 — 채널·국가별 매출 시트 7개를 서비스 계정으로 읽는 JSON 프록시
 middleware.js           Lab 비밀번호 게이트 (/lab, /api/lab 에만 적용)
 weekly/ weekly-intl/ inventory/ lab/   각 대시보드 정적 파일·문서·로컬 도구
 ```

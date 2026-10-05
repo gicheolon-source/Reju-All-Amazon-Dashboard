@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dr.Reju-All 글로벌 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f7faf9; --card:#ffffff; --line:#e4ece9; --line2:#d3e0dc;
+  --ink:#10312b; --sub:#5d7a73; --mut:#93aaa4;
+  --teal:#0f766e; --teal-d:#0b5d57; --mint:#ccfbf1; --mint-l:#f0fdf9;
+  --red:#dc2626; --red-l:#fef2f2; --amber:#d97706; --amber-l:#fffbeb;
+  --green:#059669; --green-l:#ecfdf5;
+  --shadow:0 1px 3px rgba(16,49,43,.06),0 4px 14px rgba(16,49,43,.04);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:#c8d8d3;border-radius:4px}
+
+/* ── login ── */
+#login{position:fixed;inset:0;background:linear-gradient(160deg,#f0fdf9,#e6f5f1 60%,#d9efe9);z-index:1000;display:flex;align-items:center;justify-content:center}
+#login .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:44px 40px;width:360px;box-shadow:var(--shadow);text-align:center}
+#login h1{font-size:21px;letter-spacing:-.3px;margin-bottom:4px}
+#login h1 span{color:var(--teal)}
+#login p{color:var(--sub);font-size:13px;margin-bottom:24px}
+#login input{width:100%;padding:12px 14px;border:1px solid var(--line2);border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;font-family:inherit}
+#login input:focus{border-color:var(--teal)}
+#login button{width:100%;padding:12px;background:var(--teal);color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+#login button:hover{background:var(--teal-d)}
+#loginErr{color:var(--red);font-size:12px;margin-top:10px;display:none}
+
+/* ── layout ── */
+#app{display:none}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:224px;background:#fff;border-right:1px solid var(--line);padding:24px 14px;overflow-y:auto}
+.logo{display:flex;align-items:center;gap:9px;padding:0 10px 22px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.logo .dot{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--teal),#14b8a6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
+.logo b{font-size:15px;letter-spacing:-.2px}
+.logo small{display:block;color:var(--mut);font-size:10.5px;font-weight:500}
+.nav-label{font-size:10.5px;color:var(--mut);font-weight:700;letter-spacing:.6px;padding:14px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;color:var(--sub);font-weight:500;margin-bottom:2px;font-size:13.5px}
+.nav-item svg{width:17px;height:17px;flex:none}
+.nav-item:hover{background:var(--mint-l);color:var(--teal-d)}
+.nav-item.on{background:var(--mint);color:var(--teal-d);font-weight:700}
+.main{margin-left:224px;padding:26px 30px 60px;max-width:1460px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+.topbar h2{font-size:21px;letter-spacing:-.3px}
+.topbar .meta{display:flex;gap:8px;align-items:center}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--sub);font-weight:600}
+.chip b{color:var(--teal)}
+.chip.demo{background:var(--amber-l);border-color:#fde8c8;color:var(--amber)}
+.chip.live{background:var(--green-l);border-color:#c7ecd9;color:var(--green)}
+.btn{border:1px solid var(--line2);background:#fff;color:var(--ink);padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.pri:hover{background:var(--teal-d)}
+
+/* ── cards / grid ── */
+.grid{display:grid;gap:14px;margin-bottom:14px}
+.g6{grid-template-columns:repeat(6,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1250px){.g6{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.kpi .k-label{font-size:12px;color:var(--sub);font-weight:600;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.kpi .k-val{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.kpi .k-sub{font-size:11.5px;color:var(--mut);margin-top:5px;font-weight:500}
+.kpi .k-sub b{font-weight:700}
+.up{color:var(--green)}.dn{color:var(--red)}
+.card h3{font-size:14.5px;margin-bottom:14px;letter-spacing:-.2px;display:flex;justify-content:space-between;align-items:center}
+.card h3 small{font-size:11.5px;color:var(--mut);font-weight:500}
+.ch-wrap{position:relative;height:270px}
+.ch-wrap.sm{height:230px}
+
+/* ── badges ── */
+.bdg{display:inline-flex;align-items:center;padding:2.5px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.bdg.ok{background:var(--green-l);color:var(--green)}
+.bdg.no{background:var(--red-l);color:var(--red)}
+.bdg.wn{background:var(--amber-l);color:var(--amber)}
+.bdg.nt{background:#f1f5f4;color:var(--mut)}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;white-space:nowrap}
+th{background:var(--mint-l);color:var(--sub);font-size:11.5px;font-weight:700;padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);position:sticky;top:0}
+th:first-child,td:first-child{text-align:left;padding-left:16px}
+th.l,td.l{text-align:left}
+td{padding:9px 12px;font-size:12.5px;border-bottom:1px solid #eef4f2;text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tr.sub td{background:#f4faf8;font-weight:700}
+tr.tot td{background:var(--mint);font-weight:800;font-size:13px}
+tr:hover:not(.sub):not(.tot) td{background:#fafdfc}
+td .mut{color:var(--mut);font-size:11px}
+.thgrp th{background:#e7f6f1;color:var(--teal-d);font-size:11px;text-align:center;border-right:1px solid var(--line)}
+
+/* ── alerts ── */
+.alert-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;margin-bottom:6px;font-size:12.5px;font-weight:600}
+.alert-row.bad{background:var(--red-l);color:#b91c1c}
+.alert-row.warn{background:var(--amber-l);color:#b45309}
+.alert-row.good{background:var(--green-l);color:#047857}
+
+/* ── settings ── */
+.set-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.set-row label{width:130px;font-size:12.5px;color:var(--sub);font-weight:600}
+.set-row input{flex:1;min-width:120px;padding:8px 11px;border:1px solid var(--line2);border-radius:8px;font-size:12.5px;font-family:inherit;outline:none}
+.set-row input:focus{border-color:var(--teal)}
+.src-st{font-size:11px;font-weight:700}
+.note{background:var(--mint-l);border:1px solid #d6efe7;border-radius:10px;padding:13px 16px;font-size:12.5px;color:var(--sub);line-height:1.7;margin-bottom:14px}
+.note b{color:var(--teal-d)}
+.page{display:none}.page.on{display:block}
+.mb{margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <h1>Dr.<span>Reju-All</span></h1>
+    <p>글로벌 매출 · 광고 통합 대시보드</p>
+    <input type="password" id="pw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">로그인</button>
+    <div id="loginErr">비밀번호가 올바르지 않습니다</div>
+  </div>
+</div>
+
+<div id="app">
+<div class="sidebar">
+  <div class="logo">
+    <div class="dot">R</div>
+    <div><b>Dr.Reju-All</b><small>Global Dashboard</small></div>
+  </div>
+  <div class="nav-label">리포트</div>
+  <div class="nav-item on" data-p="overview" onclick="nav('overview')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>개요</div>
+  <div class="nav-item" data-p="sales" onclick="nav('sales')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8"/><path d="M14 7h7v7"/></svg>매출 현황</div>
+  <div class="nav-item" data-p="ads" onclick="nav('ads')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M19 5a9 9 0 010 14"/></svg>광고 현황</div>
+  <div class="nav-item" data-p="products" onclick="nav('products')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>제품 현황</div>
+  <div class="nav-item" data-p="plan" onclick="nav('plan')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/></svg>월별 계획</div>
+  <div class="nav-label">관리</div>
+  <div class="nav-item" data-p="settings" onclick="nav('settings')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008.6 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8.6a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>데이터 연동</div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">개요</h2>
+    <div class="meta">
+      <span class="chip" id="chipDate">기준일 —</span>
+      <span class="chip" id="chipSrc">—</span>
+      <button class="btn" onclick="refreshData()">↻ 새로고침</button>
+    </div>
+  </div>
+  <div id="pg-overview" class="page on"></div>
+  <div id="pg-sales" class="page"></div>
+  <div id="pg-ads" class="page"></div>
+  <div id="pg-products" class="page"></div>
+  <div id="pg-plan" class="page"></div>
+  <div id="pg-settings" class="page"></div>
+</div>
+</div>
+
+<script>
+/* ═══════════════ CONFIG ═══════════════ */
+const LS='rejuall_';
+const PW='rejuall';
+const PAGE_TITLES={overview:'개요',sales:'매출 현황',ads:'광고 현황 (퍼포먼스 마케팅)',products:'제품 현황',plan:'월별 계획 vs 실적',settings:'데이터 연동 · 설정'};
+
+const DEF_CFG={
+  rates:{'미국':1380,'캐나다':1000,'영국':1800,'호주':900,'중동(UAE)':375},
+  cur:{'미국':'USD','캐나다':'CAD','영국':'GBP','호주':'AUD','중동(UAE)':'AED'},
+  thr:{'전체':0.20,'아마존':0.15,'틱톡샵':0.25},  // 광고비율 상한 (합/불)
+  roasMin:2,                                      // PM ROAS 하한
+  owners:{'아마존|미국':'온기철','아마존|캐나다':'온기철','아마존|영국':'온기철','아마존|호주':'온기철','아마존|중동(UAE)':'온기철','틱톡샵|미국':'김세원','틱톡샵|영국':'왕지윤'}
+};
+// 월별 매출 계획 (만원) — xlsx 월별계획 시트 기본값
+const DEF_PLAN={
+  '아마존|미국':12000,'아마존|캐나다':800,'아마존|영국':1500,'아마존|호주':600,'아마존|중동(UAE)':400,
+  '틱톡샵|미국':9000,'틱톡샵|영국':2500
+};
+const DEF_BUDGET={
+  'Meta|미국':1200,'Meta|영국':400,'Google|미국':800,'Google|영국':250,'TikTok Ads|미국':1000,'TikTok Ads|영국':300
+};
+// 구글시트 소스 (gviz). status: 공유설정 공개 필요
+const DEF_SRC=[
+  {ch:'아마존',co:'미국',   id:'1tlz01J78avbCMn2zObK1gN5-Sy1oPwz_VthdalC49ao',gid:'1609839593'},
+  {ch:'아마존',co:'캐나다', id:'1_IYvl05yI8YmHFYkMeicHPwBHIwGWUZgXLfrZ4txRio',gid:'1026315804'},
+  {ch:'아마존',co:'영국',   id:'1dESw-mxQKkkN-NzvPd9eg4M3YkKPAjFZmP_PyddqgX8',gid:'1026315804'},
+  {ch:'아마존',co:'호주',   id:'11rXNp-JU1WnqkxAcEsX9SO0JOpaNAbrU2zvgxGh0ZgQ',gid:'1026315804'},
+  {ch:'아마존',co:'중동(UAE)',id:'1JGDCm4bmW5NsJffgwJD_uW2ZbkiCwbzzwWDOFMXyYos',gid:'1026315804'},
+  {ch:'틱톡샵',co:'미국',   id:'1TCF9cQpSSlyKru0vaQzUZmAOXciwO8O_Zkr9fi8NfcI',gid:'1243654523'},
+  {ch:'틱톡샵',co:'영국',   id:'11hAym_BnzWSQxkQFOi4xKuLARyN35Fp9ixu1JbvaQtg',gid:'1243654523'},
+];
+const CHANNELS=[['아마존',['미국','캐나다','영국','호주','중동(UAE)']],['틱톡샵',['미국','영국']]];
+const PLATFORMS=[['Meta',['미국','영국']],['Google',['미국','영국']],['TikTok Ads',['미국','영국']]];
+const PALETTE=['#0f766e','#14b8a6','#5eead4','#f59e0b','#fb923c','#94a3b8','#64748b'];
+
+let CFG=load('cfg',DEF_CFG), PLAN=load('plan',DEF_PLAN), BUDGET=load('budget',DEF_BUDGET), SRC=load('src',DEF_SRC);
+let DAILY=[],PERF=[],PRODUCTS=[],DATA_MODE='demo';
+let charts={};
+
+function load(k,d){try{const v=localStorage.getItem(LS+k);return v?JSON.parse(v):JSON.parse(JSON.stringify(d))}catch(e){return JSON.parse(JSON.stringify(d))}}
+function save(k,v){localStorage.setItem(LS+k,JSON.stringify(v))}
+
+/* ═══════════════ DEMO DATA ═══════════════ */
+// 시드 난수 — 리로드해도 동일한 데모 데이터
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const TODAY=new Date(2026,9,5); // 데모 기준일 (실데이터 연동 시 시트 최신일로 대체)
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+function genDemo(){
+  DAILY=[];PERF=[];
+  // 현지통화 일 베이스 (xlsx 일일입력 예시 기반)
+  const base={'아마존|미국':{s:3200,a:480,o:95,as:1100,af:0},'아마존|캐나다':{s:260,a:40,o:9,as:90,af:0},
+    '아마존|영국':{s:310,a:50,o:12,as:100,af:0},'아마존|호주':{s:220,a:30,o:7,as:70,af:0},
+    '아마존|중동(UAE)':{s:400,a:60,o:8,as:130,af:0},'틱톡샵|미국':{s:2400,a:520,o:80,as:900,af:1500},'틱톡샵|영국':{s:520,a:120,o:22,as:180,af:330}};
+  const pbase={'Meta|미국':{sp:350,im:42000,cl:900,cv:28,cs:1050},'Meta|영국':{sp:110,im:15000,cl:320,cv:9,cs:300},
+    'Google|미국':{sp:240,im:18000,cl:700,cv:22,cs:900},'Google|영국':{sp:70,im:6000,cl:210,cv:6,cs:190},
+    'TikTok Ads|미국':{sp:300,im:60000,cl:1100,cv:20,cs:700},'TikTok Ads|영국':{sp:90,im:20000,cl:380,cv:6,cs:190}};
+  const start=new Date(TODAY.getFullYear(),TODAY.getMonth()-1,1); // 전월 1일부터
+  for(let d=new Date(start);d<=TODAY;d.setDate(d.getDate()+1)){
+    const dow=d.getDay(), wk=(dow===0||dow===6)?1.18:1; // 주말 가중
+    const seedD=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+    for(const[key,b]of Object.entries(base)){
+      const[ch,co]=key.split('|');
+      const r=mulberry(seedD+key.length*7919+ch.charCodeAt(0)*31+co.charCodeAt(0));
+      const f=(0.78+r()*0.5)*wk, fa=0.85+r()*0.35;
+      DAILY.push({d:iso(d),ch,co,sales:b.s*f,ad:b.a*f*fa,orders:Math.max(1,Math.round(b.o*f)),adSales:b.as*f*fa,aff:b.af*f});
+    }
+    for(const[key,b]of Object.entries(pbase)){
+      const[pf,co]=key.split('|');
+      const r=mulberry(seedD+pf.charCodeAt(0)*131+co.charCodeAt(0)*17);
+      const f=0.8+r()*0.45;
+      PERF.push({d:iso(d),pf,co,spend:b.sp*f,imp:Math.round(b.im*f),clk:Math.round(b.cl*f),conv:Math.max(1,Math.round(b.cv*f)),cvSales:b.cs*f*(0.85+r()*0.4)});
+    }
+  }
+  // 제품 데모 (판매가=USD 현지, 원가=원)
+  PRODUCTS=[
+    {sku:'DRJ-SR30',name:'PDRN 리페어 세럼 30ml',ch:'아마존',co:'미국',price:32,cost:9500,fee:0.15,stock:1850,units:1620,sales:51800,ad:7700,rating:4.6,reviews:1240},
+    {sku:'DRJ-CR50',name:'PDRN 리쥬 크림 50ml',ch:'아마존',co:'미국',price:38,cost:12800,fee:0.15,stock:920,units:880,sales:33400,ad:5100,rating:4.5,reviews:860},
+    {sku:'DRJ-MK05',name:'PDRN 앰플 마스크 (5매)',ch:'틱톡샵',co:'미국',price:19,cost:5200,fee:0.08,stock:4200,units:2850,sales:54100,ad:10400,rating:4.7,reviews:2310},
+    {sku:'DRJ-ES15',name:'PDRN 아이 세럼 15ml',ch:'아마존',co:'미국',price:27,cost:8100,fee:0.15,stock:310,units:540,sales:14600,ad:2900,rating:4.4,reviews:395},
+    {sku:'DRJ-TN150',name:'PDRN 토너 150ml',ch:'틱톡샵',co:'미국',price:22,cost:6400,fee:0.08,stock:1500,units:760,sales:16700,ad:3300,rating:4.5,reviews:512},
+    {sku:'DRJ-SET01',name:'세럼+크림 더블 세트',ch:'틱톡샵',co:'미국',price:59,cost:21500,fee:0.08,stock:480,units:620,sales:36500,ad:6800,rating:4.8,reviews:770},
+    {sku:'DRJ-SR30',name:'PDRN 리페어 세럼 30ml',ch:'아마존',co:'영국',price:26,cost:9500,fee:0.15,stock:420,units:310,sales:8060,ad:1300,rating:4.5,reviews:285},
+    {sku:'DRJ-MK05',name:'PDRN 앰플 마스크 (5매)',ch:'틱톡샵',co:'영국',price:15,cost:5200,fee:0.08,stock:980,units:640,sales:9600,ad:2200,rating:4.6,reviews:430},
+  ];
+}
+
+/* ═══════════════ 계산 유틸 ═══════════════ */
+const rate=co=>CFG.rates[co]||1380;
+const toMan=(v,co)=>v*rate(co)/10000; // 현지 → 만원
+function fmtMan(v){ // 만원 → 표시
+  if(v==null||isNaN(v))return '—';
+  const neg=v<0?'-':'';v=Math.abs(v);
+  if(v>=10000)return neg+(v/10000).toFixed(2)+'억';
+  return neg+Math.round(v).toLocaleString()+'만';
+}
+const fmtN=v=>v==null||isNaN(v)?'—':Math.round(v).toLocaleString();
+const fmtPct=(v,d=1)=>v==null||isNaN(v)||!isFinite(v)?'—':(v*100).toFixed(d)+'%';
+const fmtWon=v=>v==null||isNaN(v)?'—':'₩'+Math.round(v).toLocaleString();
+function pctCls(v){return v>=0?'up':'dn'}
+function arrow(v){return v==null||isNaN(v)?'':(v>=0?'▲ ':'▼ ')+Math.abs(v*100).toFixed(1)+'%'}
+
+function dateCtx(){
+  // 기준일 = 데이터 최신일
+  let latest=TODAY;
+  if(DAILY.length){const m=DAILY.reduce((a,r)=>r.d>a?r.d:a,'');latest=new Date(m+'T00:00:00')}
+  const y=latest.getFullYear(),mo=latest.getMonth();
+  const dim=new Date(y,mo+1,0).getDate(), elapsed=latest.getDate();
+  const mtdPfx=`${y}-${String(mo+1).padStart(2,'0')}`;
+  const pm=new Date(y,mo-1,1);
+  const pmPfx=`${pm.getFullYear()}-${String(pm.getMonth()+1).padStart(2,'0')}`;
+  const pmDays=new Date(pm.getFullYear(),pm.getMonth()+1,0).getDate();
+  const today=iso(latest);
+  const yd=new Date(latest);yd.setDate(yd.getDate()-1);
+  return{latest,y,mo,dim,elapsed,mtdPfx,pmPfx,pmDays,today,yesterday:iso(yd)};
+}
+
+// 채널·국가별 집계 (만원 환산)
+function aggSales(ch,co){
+  const c=dateCtx();
+  const rows=DAILY.filter(r=>(ch==='*'||r.ch===ch)&&(co==='*'||r.co===co));
+  const sum=(fil,fld,local)=>rows.filter(fil).reduce((a,r)=>a+(local?r[fld]:toMan(r[fld],r.co)),0);
+  const mtd=r=>r.d.startsWith(c.mtdPfx), pmf=r=>r.d.startsWith(c.pmPfx);
+  const o={
+    today:sum(r=>r.d===c.today,'sales'), yesterday:sum(r=>r.d===c.yesterday,'sales'),
+    todayLocal:rows.filter(r=>r.d===c.today).reduce((a,r)=>a+r.sales,0),
+    mtd:sum(mtd,'sales'), mtdAd:sum(mtd,'ad'), mtdAdSales:sum(mtd,'adSales'), mtdAff:sum(mtd,'aff'),
+    mtdOrders:rows.filter(mtd).reduce((a,r)=>a+r.orders,0),
+    prev:sum(pmf,'sales'),
+  };
+  o.adRatio=o.mtd?o.mtdAd/o.mtd:null;
+  o.est=c.elapsed?o.mtd/c.elapsed*c.dim:0;
+  o.aov=o.mtdOrders?o.mtd*10000/o.mtdOrders:null; // 원
+  o.prevAvg=o.prev/c.pmDays; o.mtdAvg=c.elapsed?o.mtd/c.elapsed:0;
+  o.vsPrev=o.prevAvg?o.mtdAvg/o.prevAvg-1:null;
+  return o;
+}
+function aggPerf(pf,co){
+  const c=dateCtx();
+  const rows=PERF.filter(r=>(pf==='*'||r.pf===pf)&&(co==='*'||r.co===co));
+  const mtd=rows.filter(r=>r.d.startsWith(c.mtdPfx));
+  const s=(arr,f,local)=>arr.reduce((a,r)=>a+(local?r[f]:toMan(r[f],r.co)),0);
+  const o={
+    todaySpend:s(rows.filter(r=>r.d===c.today),'spend'),
+    todayLocal:rows.filter(r=>r.d===c.today).reduce((a,r)=>a+r.spend,0),
+    spend:s(mtd,'spend'), cvSales:s(mtd,'cvSales'),
+    imp:mtd.reduce((a,r)=>a+r.imp,0), clk:mtd.reduce((a,r)=>a+r.clk,0), conv:mtd.reduce((a,r)=>a+r.conv,0),
+  };
+  o.ctr=o.imp?o.clk/o.imp:null; o.cpc=o.clk?o.spend*10000/o.clk:null;
+  o.cpa=o.conv?o.spend*10000/o.conv:null; o.roas=o.spend?o.cvSales/o.spend:null;
+  o.est=c.elapsed?o.spend/c.elapsed*c.dim:0;
+  return o;
+}
+const planOf=(ch,co)=>ch==='*'?Object.values(PLAN).reduce((a,b)=>a+b,0):co==='*'?Object.entries(PLAN).filter(([k])=>k.startsWith(ch+'|')).reduce((a,[,v])=>a+v,0):PLAN[ch+'|'+co]||0;
+const budgetOf=(pf,co)=>pf==='*'?Object.values(BUDGET).reduce((a,b)=>a+b,0):co==='*'?Object.entries(BUDGET).filter(([k])=>k.startsWith(pf+'|')).reduce((a,[,v])=>a+v,0):BUDGET[pf+'|'+co]||0;
+const thrOf=ch=>CFG.thr[ch]??CFG.thr['전체'];
+function passBdg(ok,txtOk='합',txtNo='불'){return ok==null?'<span class="bdg nt">—</span>':ok?`<span class="bdg ok">${txtOk}</span>`:`<span class="bdg no">${txtNo}</span>`}
+
+/* ═══════════════ 렌더: 개요 ═══════════════ */
+function mkChart(id,cfg){if(charts[id])charts[id].destroy();const el=document.getElementById(id);if(!el)return;charts[id]=new Chart(el,cfg)}
+Chart.defaults.font.family="'Pretendard Variable',sans-serif";
+Chart.defaults.color='#5d7a73';Chart.defaults.borderColor='#eef4f2';
+
+function renderOverview(){
+  const c=dateCtx(), T=aggSales('*','*'), P=aggPerf('*','*');
+  const plan=planOf('*','*'), prog=plan?T.mtd/plan:null, pace=c.elapsed/c.dim;
+  const vsYd=T.yesterday?T.today/T.yesterday-1:null;
+  const adOk=T.adRatio!=null?T.adRatio<=CFG.thr['전체']:null;
+  const roasOk=P.roas!=null?P.roas>=CFG.roasMin:null;
+  // 합불 알림 수집
+  let alerts=[];
+  CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>{
+    const a=aggSales(ch,co), pl=planOf(ch,co);
+    if(a.adRatio!=null&&a.adRatio>thrOf(ch))alerts.push({t:'bad',m:`${ch} ${co} 광고비율 ${fmtPct(a.adRatio)} — 상한 ${fmtPct(thrOf(ch),0)} 초과`});
+    if(pl&&a.mtd/pl<pace*0.85)alerts.push({t:'warn',m:`${ch} ${co} 진척율 ${fmtPct(a.mtd/pl)} — 페이스(${fmtPct(pace)}) 대비 부진`});
+  }));
+  PLATFORMS.forEach(([pf,cos])=>cos.forEach(co=>{
+    const p=aggPerf(pf,co);
+    if(p.roas!=null&&p.roas<CFG.roasMin)alerts.push({t:'bad',m:`${pf} ${co} ROAS ${p.roas.toFixed(2)} — 하한 ${CFG.roasMin} 미달`});
+  }));
+  if(!alerts.length)alerts.push({t:'good',m:'모든 채널 · 플랫폼이 합격 기준을 충족하고 있습니다'});
+
+  document.getElementById('pg-overview').innerHTML=`
+  <div class="grid g6">
+    <div class="card kpi"><div class="k-label">오늘 매출</div><div class="k-val">${fmtMan(T.today)}</div><div class="k-sub ${pctCls(vsYd)}">${arrow(vsYd)} <span style="color:var(--mut)">vs 어제 ${fmtMan(T.yesterday)}</span></div></div>
+    <div class="card kpi"><div class="k-label">당월 누계 (MTD)</div><div class="k-val">${fmtMan(T.mtd)}</div><div class="k-sub">진척율 <b class="${prog>=pace?'up':'dn'}">${fmtPct(prog)}</b> · 페이스 ${fmtPct(pace)}</div></div>
+    <div class="card kpi"><div class="k-label">월말 예상</div><div class="k-val">${fmtMan(T.est)}</div><div class="k-sub">계획 ${fmtMan(plan)} · 달성예상 <b class="${T.est>=plan?'up':'dn'}">${fmtPct(plan?T.est/plan:null)}</b></div></div>
+    <div class="card kpi"><div class="k-label">MTD 광고비 ${passBdg(adOk)}</div><div class="k-val">${fmtMan(T.mtdAd)}</div><div class="k-sub">광고비율 <b>${fmtPct(T.adRatio)}</b> · 상한 ${fmtPct(CFG.thr['전체'],0)}</div></div>
+    <div class="card kpi"><div class="k-label">MTD 주문</div><div class="k-val">${fmtN(T.mtdOrders)}건</div><div class="k-sub">AOV ${fmtWon(T.aov)}</div></div>
+    <div class="card kpi"><div class="k-label">PM ROAS ${passBdg(roasOk)}</div><div class="k-val">${P.roas?P.roas.toFixed(2):'—'}</div><div class="k-sub">지출 ${fmtMan(P.spend)} · 전환매출 ${fmtMan(P.cvSales)}</div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:2fr 1fr">
+    <div class="card"><h3>일별 매출 추이 <small>최근 30일 · 만원</small></h3><div class="ch-wrap"><canvas id="chTrend"></canvas></div></div>
+    <div class="card"><h3>채널 믹스 <small>MTD 매출 비중</small></h3><div class="ch-wrap"><canvas id="chMix"></canvas></div></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3>국가별 MTD 매출 <small>계획 대비</small></h3><div class="ch-wrap sm"><canvas id="chCountry"></canvas></div></div>
+    <div class="card"><h3>합불 알림 <small>광고비율 · ROAS · 진척율</small></h3><div style="max-height:230px;overflow-y:auto">${alerts.map(a=>`<div class="alert-row ${a.t}">${a.t==='bad'?'●':a.t==='warn'?'▲':'✓'} ${a.m}</div>`).join('')}</div></div>
+  </div>`;
+
+  // 추이 차트: 최근 30일 채널별 스택
+  const days=[...new Set(DAILY.map(r=>r.d))].sort().slice(-30);
+  const dsAmz=days.map(d=>DAILY.filter(r=>r.d===d&&r.ch==='아마존').reduce((a,r)=>a+toMan(r.sales,r.co),0));
+  const dsTts=days.map(d=>DAILY.filter(r=>r.d===d&&r.ch==='틱톡샵').reduce((a,r)=>a+toMan(r.sales,r.co),0));
+  mkChart('chTrend',{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:[
+    {label:'아마존',data:dsAmz,backgroundColor:'#0f766e',stack:'s',borderRadius:3},
+    {label:'틱톡샵',data:dsTts,backgroundColor:'#5eead4',stack:'s',borderRadius:3}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:10}},y:{ticks:{callback:v=>fmtMan(v)}}}}});
+  // 채널 믹스
+  const mixData=[];CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>{const m=aggSales(ch,co).mtd;if(m>0)mixData.push({l:`${ch} ${co}`,v:m})}));
+  mkChart('chMix',{type:'doughnut',data:{labels:mixData.map(x=>x.l),datasets:[{data:mixData.map(x=>x.v),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+    options:{maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:11}}},tooltip:{callbacks:{label:x=>` ${x.label}: ${fmtMan(x.raw)} (${(x.raw/mixData.reduce((a,b)=>a+b.v,0)*100).toFixed(1)}%)`}}}}});
+  // 국가별 계획 대비
+  const rows=[];CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>rows.push({l:`${ch.slice(0,2)}·${co}`,mtd:aggSales(ch,co).mtd,plan:planOf(ch,co)})));
+  mkChart('chCountry',{type:'bar',data:{labels:rows.map(r=>r.l),datasets:[
+    {label:'MTD 실적',data:rows.map(r=>r.mtd),backgroundColor:'#0f766e',borderRadius:4},
+    {label:'월 계획',data:rows.map(r=>r.plan),backgroundColor:'#d7ebe5',borderRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{y:{ticks:{callback:v=>fmtMan(v)}},x:{grid:{display:false},ticks:{font:{size:10.5}}}}}});
+}
+
+/* ═══════════════ 렌더: 매출 현황 ═══════════════ */
+function salesRow(ch,co,cls){
+  const c=dateCtx(), a=aggSales(ch,co), pl=planOf(ch,co), goal=pl/c.dim;
+  const prog=pl?a.mtd/pl:null, pace=c.elapsed/c.dim;
+  const thr=ch==='*'?CFG.thr['전체']:thrOf(ch);
+  const owner=co!=='*'&&ch!=='*'?(CFG.owners[ch+'|'+co]||''):(CFG.owners[ch+'|Subtotal']||'온기철');
+  const name=ch==='*'?'전체':co==='*'?'Subtotal':co;
+  const curCode=co!=='*'?CFG.cur[co]:'';
+  return `<tr class="${cls||''}">
+    <td class="l">${ch==='*'?'<b>전체</b>':co==='*'?`<b>${ch}</b>`:ch}</td>
+    <td class="l">${ch==='*'?'':name}</td>
+    <td class="l"><span class="mut">${owner}</span></td>
+    <td>${fmtMan(pl)}</td><td>${fmtMan(goal)}</td>
+    <td>${fmtMan(a.yesterday)}</td>
+    <td>${fmtMan(a.today)}${co!=='*'&&ch!=='*'?` <span class="mut">${curCode} ${fmtN(a.todayLocal)}</span>`:''}</td>
+    <td>${passBdg(goal?a.today>=goal:null,'달성','미달')}</td>
+    <td><b>${fmtMan(a.mtd)}</b></td>
+    <td class="${prog!=null?(prog>=pace?'up':'dn'):''}">${fmtPct(prog)}</td>
+    <td>${fmtMan(a.mtdAd)}</td>
+    <td>${fmtPct(a.adRatio)}</td>
+    <td>${passBdg(a.adRatio!=null?a.adRatio<=thr:null)}</td>
+    <td>${fmtMan(a.est)}</td>
+    <td class="${pl&&a.est>=pl?'up':'dn'}">${fmtPct(pl?a.est/pl:null)}</td>
+    <td>${fmtN(a.mtdOrders)}</td><td>${fmtWon(a.aov)}</td>
+    <td>${fmtMan(a.mtdAdSales)} <span class="mut">${fmtPct(a.mtd?a.mtdAdSales/a.mtd:null,0)}</span></td>
+    <td>${a.mtdAff>0?fmtMan(a.mtdAff)+` <span class="mut">${fmtPct(a.mtd?a.mtdAff/a.mtd:null,0)}</span>`:'—'}</td>
+    <td>${fmtMan(a.prev)}</td>
+    <td class="${pctCls(a.vsPrev)}">${arrow(a.vsPrev)}</td>
+  </tr>`;
+}
+function renderSales(){
+  const c=dateCtx();
+  let body=salesRow('*','*','tot');
+  CHANNELS.forEach(([ch,cos])=>{body+=salesRow(ch,'*','sub');cos.forEach(co=>body+=salesRow(ch,co))});
+  document.getElementById('pg-sales').innerHTML=`
+  <div class="note"><b>합불 기준</b> — 광고비÷매출 상한: 전체 ${fmtPct(CFG.thr['전체'],0)} · 아마존 ${fmtPct(CFG.thr['아마존'],0)} · 틱톡샵 ${fmtPct(CFG.thr['틱톡샵'],0)} / 단위: 만원 (현지 표시는 보조) / ${c.y}년 ${c.mo+1}월 ${c.elapsed}일 경과 (${c.dim}일 중)</div>
+  <div class="tbl-wrap mb"><table>
+    <tr class="thgrp"><th colspan="3">구분</th><th colspan="2">계획</th><th colspan="3">어제 · 오늘</th><th colspan="5">당월 누계 (MTD)</th><th colspan="2">월말 예상</th><th colspan="2">주문</th><th>광고매출</th><th>어필리에이트</th><th colspan="2">전월 대비</th></tr>
+    <tr><th class="l">채널</th><th class="l">국가</th><th class="l">담당</th><th>월 계획</th><th>일 GOAL</th><th>어제</th><th>오늘</th><th>목표대비</th><th>MTD 매출</th><th>진척율</th><th>광고비</th><th>광고비율</th><th>합/불</th><th>예상 매출</th><th>달성 예상</th><th>MTD 주문</th><th>AOV</th><th>MTD · 비중</th><th>MTD · 비중</th><th>전월</th><th>일평균 증감</th></tr>
+    ${body}
+  </table></div>
+  <div class="grid g2">
+    <div class="card"><h3>채널별 일별 매출 <small>최근 30일</small></h3><div class="ch-wrap sm"><canvas id="chSalesTrend"></canvas></div></div>
+    <div class="card"><h3>광고매출 vs 오가닉 <small>채널·국가별 MTD</small></h3><div class="ch-wrap sm"><canvas id="chAdOrg"></canvas></div></div>
+  </div>`;
+  const days=[...new Set(DAILY.map(r=>r.d))].sort().slice(-30);
+  const sets=[];let i=0;
+  CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>{
+    sets.push({label:`${ch.slice(0,2)}·${co}`,data:days.map(d=>DAILY.filter(r=>r.d===d&&r.ch===ch&&r.co===co).reduce((a,r)=>a+toMan(r.sales,r.co),0)),borderColor:PALETTE[i%PALETTE.length],backgroundColor:PALETTE[i%PALETTE.length],tension:.3,pointRadius:0,borderWidth:2});i++}));
+  mkChart('chSalesTrend',{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:sets},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:10.5}}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{ticks:{callback:v=>fmtMan(v)}}}}});
+  const rows=[];CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>{const a=aggSales(ch,co);rows.push({l:`${ch.slice(0,2)}·${co}`,ad:a.mtdAdSales,aff:a.mtdAff,org:Math.max(0,a.mtd-a.mtdAdSales-a.mtdAff)})}));
+  mkChart('chAdOrg',{type:'bar',data:{labels:rows.map(r=>r.l),datasets:[
+    {label:'광고 귀속',data:rows.map(r=>r.ad),backgroundColor:'#0f766e',stack:'s'},
+    {label:'어필리에이트',data:rows.map(r=>r.aff),backgroundColor:'#f59e0b',stack:'s'},
+    {label:'오가닉',data:rows.map(r=>r.org),backgroundColor:'#99f6e4',stack:'s',borderRadius:3}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{x:{grid:{display:false},ticks:{font:{size:10.5}}},y:{ticks:{callback:v=>fmtMan(v)}}}}});
+}
+
+/* ═══════════════ 렌더: 광고 현황 ═══════════════ */
+function perfRow(pf,co,cls){
+  const c=dateCtx(), p=aggPerf(pf,co), bg=budgetOf(pf,co), dBg=bg/c.dim;
+  const burn=bg?p.spend/bg:null;
+  const roasOk=p.roas!=null?p.roas>=CFG.roasMin:null;
+  const curCode=co!=='*'?CFG.cur[co]:'';
+  return `<tr class="${cls||''}">
+    <td class="l">${pf==='*'?'<b>전체</b>':co==='*'?`<b>${pf}</b>`:pf}</td>
+    <td class="l">${pf==='*'?'':co==='*'?'Subtotal':co}</td>
+    <td>${fmtMan(bg)}</td><td>${fmtMan(dBg)}</td>
+    <td>${fmtMan(p.todaySpend)}${co!=='*'&&pf!=='*'?` <span class="mut">${curCode} ${fmtN(p.todayLocal)}</span>`:''}</td>
+    <td><b>${fmtMan(p.spend)}</b></td>
+    <td>${fmtPct(burn)}</td>
+    <td>${fmtN(p.imp)}</td><td>${fmtN(p.clk)}</td>
+    <td>${fmtPct(p.ctr,2)}</td><td>${fmtWon(p.cpc)}</td>
+    <td>${fmtN(p.conv)}</td><td>${fmtWon(p.cpa)}</td>
+    <td>${fmtMan(p.cvSales)}</td>
+    <td class="${roasOk==null?'':roasOk?'up':'dn'}"><b>${p.roas?p.roas.toFixed(2):'—'}</b></td>
+    <td>${passBdg(roasOk)}</td>
+    <td>${fmtMan(p.est)}</td>
+    <td class="${bg&&p.est<=bg*1.05?'up':'dn'}">${fmtPct(bg?p.est/bg:null)}</td>
+  </tr>`;
+}
+function renderAds(){
+  const P=aggPerf('*','*'), bg=budgetOf('*','*');
+  let body=perfRow('*','*','tot');
+  PLATFORMS.forEach(([pf,cos])=>{body+=perfRow(pf,'*','sub');cos.forEach(co=>body+=perfRow(pf,co))});
+  document.getElementById('pg-ads').innerHTML=`
+  <div class="grid g4">
+    <div class="card kpi"><div class="k-label">MTD 총 지출</div><div class="k-val">${fmtMan(P.spend)}</div><div class="k-sub">예산 ${fmtMan(bg)} · 소진율 <b>${fmtPct(bg?P.spend/bg:null)}</b></div></div>
+    <div class="card kpi"><div class="k-label">MTD 전환매출</div><div class="k-val">${fmtMan(P.cvSales)}</div><div class="k-sub">전환 ${fmtN(P.conv)}건 · CPA ${fmtWon(P.cpa)}</div></div>
+    <div class="card kpi"><div class="k-label">통합 ROAS ${passBdg(P.roas!=null?P.roas>=CFG.roasMin:null)}</div><div class="k-val">${P.roas?P.roas.toFixed(2):'—'}</div><div class="k-sub">합격 하한 ${CFG.roasMin.toFixed(1)}</div></div>
+    <div class="card kpi"><div class="k-label">CTR / CPC</div><div class="k-val">${fmtPct(P.ctr,2)}</div><div class="k-sub">CPC ${fmtWon(P.cpc)} · 클릭 ${fmtN(P.clk)}</div></div>
+  </div>
+  <div class="tbl-wrap mb"><table>
+    <tr class="thgrp"><th colspan="2">구분</th><th colspan="2">예산</th><th>오늘</th><th colspan="9">당월 누계 (MTD)</th><th>합불</th><th colspan="2">월말 예상</th></tr>
+    <tr><th class="l">플랫폼</th><th class="l">국가</th><th>월 예산</th><th>일 예산</th><th>지출</th><th>지출</th><th>소진율</th><th>노출</th><th>클릭</th><th>CTR</th><th>CPC</th><th>전환</th><th>CPA</th><th>전환매출</th><th>ROAS</th><th>합/불</th><th>예상 지출</th><th>예산 대비</th></tr>
+    ${body}
+  </table></div>
+  <div class="grid g2">
+    <div class="card"><h3>플랫폼별 지출 vs 전환매출 <small>MTD · 만원</small></h3><div class="ch-wrap sm"><canvas id="chPfBar"></canvas></div></div>
+    <div class="card"><h3>일별 ROAS 추이 <small>플랫폼별 · 최근 30일</small></h3><div class="ch-wrap sm"><canvas id="chRoas"></canvas></div></div>
+  </div>`;
+  const rows=[];PLATFORMS.forEach(([pf,cos])=>cos.forEach(co=>{const p=aggPerf(pf,co);rows.push({l:`${pf} ${co}`,sp:p.spend,cv:p.cvSales})}));
+  mkChart('chPfBar',{type:'bar',data:{labels:rows.map(r=>r.l),datasets:[
+    {label:'지출',data:rows.map(r=>r.sp),backgroundColor:'#f59e0b',borderRadius:4},
+    {label:'전환매출',data:rows.map(r=>r.cv),backgroundColor:'#0f766e',borderRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{x:{grid:{display:false},ticks:{font:{size:10.5}}},y:{ticks:{callback:v=>fmtMan(v)}}}}});
+  const days=[...new Set(PERF.map(r=>r.d))].sort().slice(-30);
+  const sets=PLATFORMS.map(([pf],i)=>({label:pf,data:days.map(d=>{
+      const rs=PERF.filter(r=>r.d===d&&r.pf===pf);
+      const sp=rs.reduce((a,r)=>a+toMan(r.spend,r.co),0),cv=rs.reduce((a,r)=>a+toMan(r.cvSales,r.co),0);
+      return sp?cv/sp:null}),
+    borderColor:PALETTE[i*2%PALETTE.length],tension:.3,pointRadius:0,borderWidth:2}));
+  mkChart('chRoas',{type:'line',data:{labels:days.map(d=>d.slice(5)),datasets:sets},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}},annotation:undefined},
+    scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{suggestedMin:0,ticks:{callback:v=>v.toFixed(1)}}}}});
+}
+
+/* ═══════════════ 렌더: 제품 현황 ═══════════════ */
+function renderProducts(){
+  const c=dateCtx();
+  const totSales=PRODUCTS.reduce((a,p)=>a+toMan(p.sales,p.co),0);
+  const enriched=PRODUCTS.map(p=>{
+    const salesMan=toMan(p.sales,p.co), adMan=toMan(p.ad,p.co);
+    const priceWon=p.price*rate(p.co);
+    const fee=priceWon*p.fee, margin=priceWon-fee-p.cost, mRate=priceWon?margin/priceWon:0;
+    const vel=p.units/c.elapsed, days=vel?p.stock/vel:Infinity;
+    return{...p,salesMan,adMan,priceWon,margin,mRate,vel,days,tacos:salesMan?adMan/salesMan:0,share:totSales?salesMan/totSales:0};
+  }).sort((a,b)=>b.salesMan-a.salesMan);
+  const low=enriched.filter(p=>p.days<30).length;
+  const avgR=enriched.reduce((a,p)=>a+p.rating,0)/enriched.length;
+  const avgM=enriched.reduce((a,p)=>a+p.mRate*p.salesMan,0)/totSales;
+  document.getElementById('pg-products').innerHTML=`
+  <div class="note"><b>데이터 소스</b> — 현재 ${DATA_MODE==='demo'?'데모 데이터':'구글시트'}. 구글시트에 <b>제품현황</b> 탭(SKU·제품명·채널·국가·판매가·원가·수수료율·재고·MTD판매량·MTD매출·광고지출·평점·리뷰수)을 추가하면 자동 연동됩니다.</div>
+  <div class="grid g4">
+    <div class="card kpi"><div class="k-label">운영 SKU</div><div class="k-val">${enriched.length}개</div><div class="k-sub">채널×국가 리스팅 기준</div></div>
+    <div class="card kpi"><div class="k-label">재고 경보 ${low?'<span class="bdg no">리오더</span>':'<span class="bdg ok">정상</span>'}</div><div class="k-val">${low}개</div><div class="k-sub">재고일수 30일 미만 SKU</div></div>
+    <div class="card kpi"><div class="k-label">평균 평점</div><div class="k-val">★ ${avgR.toFixed(2)}</div><div class="k-sub">리뷰 ${fmtN(enriched.reduce((a,p)=>a+p.reviews,0))}개</div></div>
+    <div class="card kpi"><div class="k-label">가중평균 마진율</div><div class="k-val">${fmtPct(avgM)}</div><div class="k-sub">판매가-수수료-원가 기준</div></div>
+  </div>
+  <div class="tbl-wrap mb"><table>
+    <tr><th class="l">SKU</th><th class="l">제품명</th><th class="l">채널 / 국가</th><th>판매가</th><th>MTD 판매량</th><th>MTD 매출</th><th>비중</th><th>광고지출</th><th>TACOS</th><th>재고</th><th>재고일수</th><th>리오더</th><th>평점</th><th>리뷰</th><th>건당 마진</th><th>마진율</th></tr>
+    ${enriched.map(p=>`<tr>
+      <td class="l"><b>${p.sku}</b></td><td class="l">${p.name}</td>
+      <td class="l"><span class="mut">${p.ch} · ${p.co}</span></td>
+      <td>${CFG.cur[p.co]} ${p.price} <span class="mut">${fmtWon(p.priceWon)}</span></td>
+      <td>${fmtN(p.units)}</td><td><b>${fmtMan(p.salesMan)}</b></td><td>${fmtPct(p.share)}</td>
+      <td>${fmtMan(p.adMan)}</td><td class="${p.tacos>0.2?'dn':''}">${fmtPct(p.tacos)}</td>
+      <td>${fmtN(p.stock)}</td>
+      <td class="${p.days<30?'dn':p.days<45?'':'up'}">${isFinite(p.days)?Math.round(p.days)+'일':'—'}</td>
+      <td>${p.days<30?'<span class="bdg no">긴급</span>':p.days<45?'<span class="bdg wn">준비</span>':'<span class="bdg ok">여유</span>'}</td>
+      <td>★ ${p.rating.toFixed(1)}</td><td>${fmtN(p.reviews)}</td>
+      <td>${fmtWon(p.margin)}</td><td class="${p.mRate<0.2?'dn':'up'}">${fmtPct(p.mRate)}</td>
+    </tr>`).join('')}
+  </table></div>
+  <div class="grid g2">
+    <div class="card"><h3>베스트셀러 <small>MTD 매출 TOP · 만원</small></h3><div class="ch-wrap sm"><canvas id="chBest"></canvas></div></div>
+    <div class="card"><h3>마진율 × TACOS <small>버블=매출 규모</small></h3><div class="ch-wrap sm"><canvas id="chMargin"></canvas></div></div>
+  </div>`;
+  const top=enriched.slice(0,8);
+  mkChart('chBest',{type:'bar',data:{labels:top.map(p=>`${p.name.slice(0,14)} (${p.co.slice(0,2)})`),datasets:[{label:'MTD 매출',data:top.map(p=>p.salesMan),backgroundColor:top.map((_,i)=>i===0?'#0f766e':'#5eead4'),borderRadius:5}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>fmtMan(v)}},y:{grid:{display:false},ticks:{font:{size:10.5}}}}}});
+  mkChart('chMargin',{type:'bubble',data:{datasets:enriched.map((p,i)=>({label:p.name.slice(0,12),data:[{x:p.tacos*100,y:p.mRate*100,r:Math.max(6,Math.sqrt(p.salesMan)/2.2)}],backgroundColor:PALETTE[i%PALETTE.length]+'bb'}))},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>` ${x.dataset.label}: TACOS ${x.raw.x.toFixed(1)}% · 마진 ${x.raw.y.toFixed(1)}%`}}},
+    scales:{x:{title:{display:true,text:'TACOS (%)',font:{size:11}}},y:{title:{display:true,text:'마진율 (%)',font:{size:11}}}}}});
+}
+
+/* ═══════════════ 렌더: 월별 계획 ═══════════════ */
+function renderPlan(){
+  const c=dateCtx();
+  const months=[...Array(12)].map((_,i)=>i);
+  const actual={};
+  DAILY.forEach(r=>{
+    const m=+r.d.slice(5,7)-1, y=+r.d.slice(0,4);
+    if(y!==c.y)return;
+    const k=r.ch+'|'+r.co;(actual[k]=actual[k]||Array(12).fill(0))[m]+=toMan(r.sales,r.co);
+  });
+  let body='';
+  CHANNELS.forEach(([ch,cos])=>cos.forEach(co=>{
+    const k=ch+'|'+co, pl=PLAN[k]||0, act=actual[k]||Array(12).fill(0);
+    body+=`<tr><td class="l">${ch}</td><td class="l">${co}</td>
+      ${months.map(m=>{const a=act[m];return`<td>${a>0?`<b>${fmtN(a)}</b><br><span class="mut">${fmtPct(pl?a/pl:null,0)}</span>`:`<span class="mut">${fmtN(pl)}</span>`}</td>`}).join('')}
+      <td><b>${fmtN(pl*12)}</b></td><td>${fmtN(act.reduce((a,b)=>a+b,0))}</td></tr>`;
+  }));
+  const totPlan=Object.values(PLAN).reduce((a,b)=>a+b,0);
+  const totAct=months.map(m=>Object.values(actual).reduce((a,arr)=>a+arr[m],0));
+  body+=`<tr class="tot"><td class="l" colspan="2">합계</td>${months.map(m=>`<td>${totAct[m]>0?fmtN(totAct[m]):`<span class="mut">${fmtN(totPlan)}</span>`}</td>`).join('')}<td>${fmtN(totPlan*12)}</td><td>${fmtN(totAct.reduce((a,b)=>a+b,0))}</td></tr>`;
+  document.getElementById('pg-plan').innerHTML=`
+  <div class="note"><b>단위: 만원</b> — 셀 상단=실적, 하단=계획 대비 달성율. 실적 없는 달은 회색으로 계획 표시. 월별 계획 수정은 <b>데이터 연동</b> 페이지에서.</div>
+  <div class="tbl-wrap mb"><table>
+    <tr><th class="l">채널</th><th class="l">국가</th>${months.map(m=>`<th>${m+1}월</th>`).join('')}<th>연간 계획</th><th>연간 실적</th></tr>
+    ${body}
+  </table></div>
+  <div class="card"><h3>월별 계획 vs 실적 <small>${c.y}년 · 만원</small></h3><div class="ch-wrap"><canvas id="chPlan"></canvas></div></div>`;
+  mkChart('chPlan',{type:'bar',data:{labels:months.map(m=>m+1+'월'),datasets:[
+    {label:'계획',data:months.map(()=>totPlan),backgroundColor:'#d7ebe5',borderRadius:4},
+    {label:'실적',data:totAct.map(v=>v||null),backgroundColor:'#0f766e',borderRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmtMan(v)}}}}});
+}
+
+/* ═══════════════ 렌더: 설정 / 연동 ═══════════════ */
+function renderSettings(){
+  document.getElementById('pg-settings').innerHTML=`
+  <div class="note">
+    <b>구글시트 연동 — 두 가지 방법</b><br>
+    <b>A. 서비스 계정 (Vercel 배포, 권장)</b>: 시트를 비공개로 둔 채, 각 시트를 서비스 계정 이메일(Vercel 환경변수 GOOGLE_SERVICE_ACCOUNT_EMAIL)에 <b>뷰어로 공유</b> → [실데이터 불러오기]. 자동으로 이 방식을 먼저 시도합니다.<br>
+    <b>B. 공개 시트 (로컬 프리뷰용)</b>: 각 시트를 공유 → "링크가 있는 모든 사용자 + 뷰어"로 설정 → [전체 연결 테스트] 후 [실데이터 불러오기].<br>
+    연동 전까지는 데모 데이터로 표시됩니다.
+  </div>
+  <div class="card mb"><h3>데이터 소스 (채널 · 국가별 시트) <span><button class="btn" onclick="testAll()">전체 연결 테스트</button> <button class="btn pri" onclick="loadLive()">실데이터 불러오기</button></span></h3>
+    <div class="tbl-wrap"><table>
+      <tr><th class="l">채널</th><th class="l">국가</th><th class="l">스프레드시트 ID</th><th class="l">gid</th><th>상태</th></tr>
+      ${SRC.map((s,i)=>`<tr><td class="l">${s.ch}</td><td class="l">${s.co}</td>
+        <td class="l"><input style="width:340px;padding:5px 8px;border:1px solid var(--line2);border-radius:6px;font-size:11.5px" value="${s.id}" onchange="SRC[${i}].id=this.value;save('src',SRC)"></td>
+        <td class="l"><input style="width:100px;padding:5px 8px;border:1px solid var(--line2);border-radius:6px;font-size:11.5px" value="${s.gid}" onchange="SRC[${i}].gid=this.value;save('src',SRC)"></td>
+        <td><span class="src-st" id="st-${i}">${s.ok===true?'<span class="bdg ok">연결됨</span>':s.ok===false?'<span class="bdg no">접근불가</span>':'<span class="bdg nt">미확인</span>'}</span></td></tr>`).join('')}
+    </table></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3>환율 (1 현지통화 = KRW)</h3>
+      ${Object.keys(CFG.rates).map(co=>`<div class="set-row"><label>${co} (${CFG.cur[co]})</label><input type="number" value="${CFG.rates[co]}" onchange="CFG.rates['${co}']=+this.value;save('cfg',CFG);rerender()"></div>`).join('')}
+    </div>
+    <div class="card"><h3>합불 기준 · 월 계획</h3>
+      <div class="set-row"><label>광고비율 상한 · 전체</label><input type="number" step="0.01" value="${CFG.thr['전체']}" onchange="CFG.thr['전체']=+this.value;save('cfg',CFG);rerender()"></div>
+      <div class="set-row"><label>광고비율 상한 · 아마존</label><input type="number" step="0.01" value="${CFG.thr['아마존']}" onchange="CFG.thr['아마존']=+this.value;save('cfg',CFG);rerender()"></div>
+      <div class="set-row"><label>광고비율 상한 · 틱톡샵</label><input type="number" step="0.01" value="${CFG.thr['틱톡샵']}" onchange="CFG.thr['틱톡샵']=+this.value;save('cfg',CFG);rerender()"></div>
+      <div class="set-row"><label>PM ROAS 하한</label><input type="number" step="0.1" value="${CFG.roasMin}" onchange="CFG.roasMin=+this.value;save('cfg',CFG);rerender()"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+      ${Object.entries(PLAN).map(([k,v])=>`<div class="set-row"><label>${k.replace('|',' · ')} (만원/월)</label><input type="number" value="${v}" onchange="PLAN['${k}']=+this.value;save('plan',PLAN);rerender()"></div>`).join('')}
+      ${Object.entries(BUDGET).map(([k,v])=>`<div class="set-row"><label>${k.replace('|',' · ')} 예산</label><input type="number" value="${v}" onchange="BUDGET['${k}']=+this.value;save('budget',BUDGET);rerender()"></div>`).join('')}
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>초기화</h3>
+    <button class="btn" onclick="if(confirm('설정·계획을 기본값으로 되돌릴까요?')){localStorage.removeItem(LS+'cfg');localStorage.removeItem(LS+'plan');localStorage.removeItem(LS+'budget');localStorage.removeItem(LS+'src');location.reload()}">설정 초기화</button>
+  </div>`;
+}
+
+/* ═══════════════ 구글시트 연동 (gviz) ═══════════════ */
+function gvizUrl(s){return `https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:json&gid=${s.gid}&headers=0`}
+async function fetchGviz(s){
+  const res=await fetch(gvizUrl(s));
+  const txt=await res.text();
+  if(!txt.includes('setResponse'))throw new Error('비공개 시트 (로그인 요구)');
+  const json=JSON.parse(txt.substring(txt.indexOf('{'),txt.lastIndexOf('}')+1));
+  if(json.status==='error')throw new Error(json.errors?.[0]?.detailed_message||'gviz error');
+  // rows → 2D 배열 (Date(y,m,d) 파싱 포함)
+  return json.table.rows.map(r=>(r.c||[]).map(c=>{
+    if(!c)return null;
+    if(typeof c.v==='string'&&c.v.startsWith('Date(')){
+      const[y,m,d]=c.v.slice(5,-1).split(',').map(Number);
+      return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+    return c.v;
+  }));
+}
+async function testAll(){
+  for(let i=0;i<SRC.length;i++){
+    const el=document.getElementById('st-'+i);
+    if(el)el.innerHTML='<span class="bdg wn">확인중…</span>';
+    try{await fetchGviz(SRC[i]);SRC[i].ok=true;if(el)el.innerHTML='<span class="bdg ok">연결됨</span>'}
+    catch(e){SRC[i].ok=false;if(el)el.innerHTML='<span class="bdg no">접근불가</span>'}
+  }
+  save('src',SRC);
+}
+// 날짜 정규화: ISO 문자열 / 구글시트 serial number / "2026. 10. 5" / "10/5/2026" 모두 수용
+function toISO(v){
+  if(v==null||v==='')return null;
+  if(typeof v==='number'&&v>20000&&v<80000){ // Sheets serial (epoch 1899-12-30)
+    const d=new Date(Date.UTC(1899,11,30)+v*86400000);
+    return d.toISOString().slice(0,10);
+  }
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  let m=s.match(/^(\d{4})[.\/\-]\s*(\d{1,2})[.\/\-]\s*(\d{1,2})/); // 2026.10.5 / 2026. 10. 5
+  if(m)return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);            // 10/5/2026
+  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  return null;
+}
+// 시트 구조가 확정되면 이 매핑만 수정하면 됨:
+// 기대 구조(행): [날짜, 매출(현지), 광고비(현지), 주문수, 광고매출(현지), 어필리에이트(현지)]
+function parseSheetRows(rows,s){
+  // 헤더 행 찾기: '날짜' 또는 'date' 포함 행
+  let hi=rows.findIndex(r=>r.some(c=>typeof c==='string'&&/날짜|date/i.test(c)));
+  const header=hi>=0?rows[hi].map(c=>String(c||'')):null;
+  const body=rows.slice(hi+1);
+  const col=pats=>header?header.findIndex(h=>pats.some(p=>h.replace(/\s/g,'').toLowerCase().includes(p))):-1;
+  const ci={d:col(['날짜','date']),sales:col(['총매출','매출','sales','gmv','revenue']),ad:col(['광고비','spend','adspend']),
+    orders:col(['주문','orders','units']),adSales:col(['광고매출','adsales','ppc']),aff:col(['어필리','affiliate','크리에이터'])};
+  const out=[];
+  body.forEach(r=>{
+    const d=toISO(ci.d>=0?r[ci.d]:r[0]);
+    if(!d)return;
+    const num=i=>i>=0&&r[i]!=null&&r[i]!==''?+String(r[i]).replace(/[^0-9.\-]/g,'')||0:0;
+    out.push({d,ch:s.ch,co:s.co,sales:num(ci.sales),ad:num(ci.ad),orders:num(ci.orders),adSales:num(ci.adSales),aff:num(ci.aff)});
+  });
+  return out;
+}
+/* Vercel 배포 시: 서비스 계정 프록시(/api/global/sheets)가 비공개 시트를 대신 읽어줌 */
+async function loadViaApi(){
+  const res=await fetch('/api/global/sheets');
+  if(!res.ok)throw new Error('api '+res.status);
+  const j=await res.json();
+  if(!j.ok)throw new Error(j.error||'api error');
+  const all=[],fails=[];
+  j.sources.forEach(src=>{
+    if(!src.ok){fails.push(`${src.ch} ${src.co}: ${src.error}${src.hint?' — '+src.hint:''}`);return}
+    const s=SRC.find(x=>x.ch===src.ch&&x.co===src.co)||{ch:src.ch,co:src.co};
+    const parsed=parseSheetRows(src.rows,s);
+    if(!parsed.length)fails.push(`${src.ch} ${src.co}: 탭 '${src.title}'에서 날짜 데이터를 찾지 못함`);
+    all.push(...parsed);
+  });
+  return{all,fails,saEmail:j.saEmail};
+}
+async function loadLive(){
+  let all=[],fails=[],via='';
+  // 1순위: 서비스 계정 프록시 (Vercel 배포에서만 존재 — 시트 비공개 유지 가능)
+  try{const r=await loadViaApi();all=r.all;fails=r.fails;via='서비스 계정';}
+  catch(e){
+    // 2순위: gviz 직접 호출 (시트가 "링크 공개"일 때만 동작 — 로컬 프리뷰용)
+    via='gviz(공개시트)';
+    for(const s of SRC){
+      try{const rows=await fetchGviz(s);const parsed=parseSheetRows(rows,s);
+        if(!parsed.length)fails.push(`${s.ch} ${s.co}: 날짜 데이터를 찾지 못함`);
+        all.push(...parsed);s.ok=true;
+      }catch(e2){fails.push(`${s.ch} ${s.co}: ${e2.message}`);s.ok=false}
+    }
+    save('src',SRC);
+  }
+  if(all.length){DAILY=all;DATA_MODE='live';rerender();updateChips();}
+  alert((all.length?`실데이터 ${all.length}행 로드 완료 (${via})\n`:'로드된 데이터 없음\n')+(fails.length?'\n실패:\n'+fails.join('\n'):''));
+}
+function refreshData(){if(DATA_MODE==='live')loadLive();else{genDemo();rerender()}}
+
+/* ═══════════════ 네비 / 부트 ═══════════════ */
+const RENDER={overview:renderOverview,sales:renderSales,ads:renderAds,products:renderProducts,plan:renderPlan,settings:renderSettings};
+let CUR='overview';
+function nav(p){
+  CUR=p;
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('on',e.dataset.p===p));
+  document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='pg-'+p));
+  document.getElementById('pageTitle').textContent=PAGE_TITLES[p];
+  RENDER[p]();
+}
+function rerender(){RENDER[CUR]()}
+function updateChips(){
+  const c=dateCtx();
+  document.getElementById('chipDate').innerHTML=`기준일 <b>${c.today}</b> · ${c.elapsed}/${c.dim}일`;
+  const chip=document.getElementById('chipSrc');
+  if(DATA_MODE==='live'){chip.className='chip live';chip.textContent='● 구글시트 연동'}
+  else{chip.className='chip demo';chip.textContent='● 데모 데이터'}
+}
+function doLogin(){
+  if(document.getElementById('pw').value===PW){
+    sessionStorage.setItem(LS+'auth','1');boot();
+  }else document.getElementById('loginErr').style.display='block';
+}
+function boot(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  genDemo();updateChips();nav('overview');
+}
+if(sessionStorage.getItem(LS+'auth')==='1')boot();
+else document.getElementById('pw').focus();
+window.DBG={get DAILY(){return DAILY},get PERF(){return PERF},aggSales,aggPerf,dateCtx,nav,loadLive,testAll};
+</script>
+</body>
+</html>
