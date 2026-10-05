@@ -7,7 +7,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "node lab/scripts/serve.mjs",
+    "lab:serve": "node lab/scripts/serve.mjs",
     "test": "node inventory/test/smoke_test.js",
     "lab:init-db": "node lab/scripts/init-db.mjs",
     "lab:load": "node lab/scripts/load.mjs",
